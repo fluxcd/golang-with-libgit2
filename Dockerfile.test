@@ -1,0 +1,15 @@
+# This Docker image can be used to confirm the sets of dependencies can be used together with git2go.
+# Note: this just confirms the C library wiring is working, and no implementation details. It does not tell
+# for example, if ED25519 is supported by the underlying set of dependencies.
+ARG IMG
+ARG TAG
+FROM ${IMG}:${TAG} as base
+
+# Cache clone
+ARG GIT2GO_TAG
+RUN git clone --depth=1 --branch=${GIT2GO_TAG} https://github.com/libgit2/git2go /git2go \
+    && cd /git2go \
+    && go mod tidy
+
+# Set workdir
+WORKDIR /git2go
