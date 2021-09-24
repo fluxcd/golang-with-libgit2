@@ -1,15 +1,33 @@
 # This Docker image can be used to confirm the sets of dependencies can be used together with git2go.
-# Note: this just confirms the C library wiring is working, and no implementation details. It does not tell
-# for example, if ED25519 is supported by the underlying set of dependencies.
+# Note: this just confirms the C library wiring is working, and no implementation details.
+# It does for example not tell you if ED25519 is supported by the underlying set of dependencies, etc.
 ARG IMG
 ARG TAG
-FROM ${IMG}:${TAG} as base
+# NB: because the `Dockerfile` performs a build on the $BUILDPLATFORM and then later pushes it as
+# if it were a $TARGETPLATFORM image, we need to inverse this by NOT using --platform.
+FROM $IMG:$TAG as source
 
 # Cache clone
 ARG GIT2GO_TAG
-RUN git clone --depth=1 --branch=${GIT2GO_TAG} https://github.com/libgit2/git2go /git2go \
+RUN git config --global advice.detachedHead false \
+    && git clone --depth=1 --branch=${GIT2GO_TAG} https://github.com/libgit2/git2go /git2go \
     && cd /git2go \
     && go mod tidy
 
 # Set workdir
 WORKDIR /git2go
+
+FROM source as test
+
+# Run tests
+ARG TARGETPLATFORM
+ARG CACHE_BUST
+RUN set -eux; \
+    echo "=> Dynamic test at $CACHE_BUST for $TARGETPLATFORM" \
+    && CGO_ENABLED=1 xx-go run script/check-MakeGitError-thread-lock.go \
+    && CGO_ENABLED=1 xx-go test ./...
+
+#RUN set -eux; \
+#    echo "=> Static test at $CACHE_BUST for $TARGETPLATFORM" \
+#    && CGO_ENABLED=1 xx-go run -tags "static,system_libgit2" script/check-MakeGitError-thread-lock.go \
+#    && CGO_ENABLED=1 xx-go test -tags "static,system_libgit2" ./...

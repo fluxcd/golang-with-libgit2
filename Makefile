@@ -1,38 +1,37 @@
 IMG ?= hiddeco/golang-with-libgit2
 TAG ?= latest
-ARCHS ?= linux/amd64,linux/arm/v7,linux/arm64
-GIT2GO_TAG ?= v32.0.4
 STATIC_TEST_TAG := test
+
+PLATFORMS ?= linux/amd64,linux/arm/v7,linux/arm64
+BUILD_ARGS ?=
+
+GIT2GO_TAG ?= v32.0.4
 
 .PHONY: build
 build:
-	docker build -t $(IMG):$(TAG) -f Dockerfile  --build-arg NPROC=$(shell nproc) .
-
-.PHONY: build-multi-arch
-build-multi-arch:
 	docker buildx build \
-		--platform=$(ARCHS) \
+		--platform=$(PLATFORMS) \
 		--tag $(IMG):$(TAG) \
 		--file Dockerfile \
-		--build-arg NPROC=$(shell nproc) .
+		$(BUILD_ARGS) .
 
 .PHONY: test
-test: test-dynamic test-static
+test:
+	docker buildx build \
+		--platform=$(PLATFORMS) \
+		--tag $(IMG):$(TAG) \
+		--build-arg IMG=$(IMG) \
+		--build-arg TAG=$(TAG) \
+		--build-arg GIT2GO_TAG=$(GIT2GO_TAG) \
+		--build-arg CACHE_BUST="$(shell date --rfc-3339=ns --utc)" \
+		--file Dockerfile.test .
 
-.PHONY: test-dynamic
-test-dynamic: Dockerfile.test
-	docker run --rm $(IMG):$(STATIC_TEST_TAG) sh -c 'PKG_CONFIG_PATH=$$LIBGIT2_DYNAMIC_ROOT_DIR/lib/pkgconfig \
-		LD_LIBRARY_PATH=$$LIBGIT2_DYNAMIC_ROOT_DIR/lib/ \
-		go test --count=1 ./...'
-
-.PHONY: test-static
-test-static: Dockerfile.test
-	docker run --rm $(IMG):$(STATIC_TEST_TAG) sh -c 'PKG_CONFIG_PATH=$$LIBGIT2_STATIC_ROOT_DIR/lib/pkgconfig \
-		LD_LIBRARY_PATH=$$LIBGIT2_STATIC_ROOT_DIR/lib/ \
-		go test -tags "static,system_libgit2" --count=1 ./...'
-
-.PHONY: Dockerfile.test
-Dockerfile.test:
-	docker build -t $(IMG):$(STATIC_TEST_TAG) \
-		-f Dockerfile.test \
-		--build-arg IMG=$(IMG) --build-arg TAG=$(TAG) --build-arg GIT2GO_TAG=$(GIT2GO_TAG) .
+.PHONY: builder
+builder:
+	docker buildx create --name local-builder \
+		--platform $(PLATFORMS) \
+		--driver-opt network=host \
+		--driver-opt env.BUILDKIT_STEP_LOG_MAX_SIZE=1073741274 \
+		--driver-opt env.BUILDKIT_STEP_LOG_MAX_SPEED=5000000000000 \
+		--buildkitd-flags '--allow-insecure-entitlement security.insecure' \
+		--use

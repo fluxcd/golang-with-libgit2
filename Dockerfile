@@ -1,46 +1,56 @@
-FROM golang:1.16.8-bullseye as base
+ARG BASE_VARIANT=bullseye
+ARG GO_VERSION=1.16.8
+ARG XX_VERSION=1.0.0-rc.2
 
-# Install depedencies required to build
-RUN set -eux; \
-    apt-get update \
-    && apt-get install -y --no-install-recommends \
-        cmake \
-        python3 \
-    && apt-get clean \
-    && apt-get autoremove --purge -y \
-    && rm -rf /var/lib/apt/lists/*
+FROM --platform=$BUILDPLATFORM tonistiigi/xx:${XX_VERSION} AS xx
 
-# Copy libgit2 build directives and instructions into container
-ARG LIBGIT2_SRC_DIR
-ENV LIBGIT2_SRC_DIR=${LIBGIT2_SRC_DIR:-/libgit2}
-COPY CMakeLists.txt ${LIBGIT2_SRC_DIR}/CMakeLists.txt
+FROM --platform=$BUILDPLATFORM golang:${GO_VERSION}-${BASE_VARIANT} as gostable
+FROM --platform=$BUILDPLATFORM golang:1.17rc1-${BASE_VARIANT} AS golatest
 
-# Set right before build time to not invalidate previous cache layers.
-ARG LIBGIT2_DYNAMIC_ROOT_DIR
-ENV LIBGIT2_DYNAMIC_ROOT_DIR=${LIBGIT2_DYNAMIC_ROOT_DIR:-${LIBGIT2_SRC_DIR}/dynamic}
-ARG LIBGIT2_STATIC_ROOT_DIR
-ENV LIBGIT2_STATIC_ROOT_DIR=${LIBGIT2_STATIC_ROOT_DIR:-${LIBGIT2_SRC_DIR}/static}
+FROM gostable AS go-linux
 
-# Set default to single process
-ARG NPROC=1
+FROM go-${TARGETOS} AS build-base-bullseye
 
-# Run the libgit2 and dependencies build.
-# Produce two sets (dynamic and static) of pre-compiled libraries in /libgit2/,
-# and remove the build directory itself to minimize image size.
-#
-# Note: you can still reproduce the build by making use of /libgit2/CMakeLists.txt.
-RUN set -eux; \
-    build_dir=$(mktemp -d) \
-    && echo "=> Dynamic build" \
-    && cmake -S $LIBGIT2_SRC_DIR -B $build_dir \
-      -DBUILD_SHARED_LIBS:BOOL=ON \
-      -DUSE_EXTERNAL_INSTALL:BOOL=ON \
-      -DCMAKE_INSTALL_PREFIX:PATH=$LIBGIT2_DYNAMIC_ROOT_DIR \
-    && cmake --build $build_dir -j $NPROC \
-    && echo "=> Static build" \
-    && cmake -S $LIBGIT2_SRC_DIR -B $build_dir \
-      -DBUILD_SHARED_LIBS:BOOL=OFF \
-      -DUSE_EXTERNAL_INSTALL:BOOL=ON \
-      -DCMAKE_INSTALL_PREFIX:PATH=$LIBGIT2_STATIC_ROOT_DIR  \
-    && cmake --build $build_dir -j $NPROC \
-    && rm -rf $build_dir
+COPY --from=xx / /
+
+RUN apt-get update && apt-get install --no-install-recommends -y clang
+ARG CMAKE_VERSION=3.21.3
+RUN curl -sL -o cmake-linux.sh "https://github.com/Kitware/CMake/releases/download/v${CMAKE_VERSION}/cmake-${CMAKE_VERSION}-linux-$(xx-info march).sh" \
+    && sh cmake-linux.sh -- --skip-license --prefix=/usr \
+    && rm cmake-linux.sh
+
+FROM build-base-bullseye AS build-bullseye
+ARG TARGETPLATFORM
+RUN xx-apt install --no-install-recommends -y binutils gcc libc6-dev dpkg-dev
+
+FROM build-${BASE_VARIANT} AS build-dependencies-bullseye
+
+# Install libssh2 for $TARGETPLATFORM from "sid", as the version in "bullseye"
+# has been linked against gcrypt, which causes issues with PKCS* formats.
+# We pull (sub)dependencies from there as well, to ensure all versions are aligned,
+# and not accidentially linked to e.g. mbedTLS (which has limited support for
+# certain key formats).
+# Ref: https://bugs.debian.org/cgi-bin/bugreport.cgi?bug=668271
+# Ref: https://github.com/ARMmbed/mbedtls/issues/2452#issuecomment-802683144
+ARG TARGETPLATFORM
+RUN echo "deb http://deb.debian.org/debian sid main" >> /etc/apt/sources.list \
+    && echo "deb-src http://deb.debian.org/debian sid main" >> /etc/apt/sources.list
+RUN xx-apt update \
+    && xx-apt -t sid install --no-install-recommends -y zlib1g-dev libssl-dev libssh2-1-dev
+
+FROM build-dependencies-${BASE_VARIANT} as build-libgit2-bullseye
+
+# Compile libgit2 as a dynamic build
+# We compile it ourselves to ensure they are properly linked with the above packages,
+# and to allow room for customizations (or more rapid updates than the OS).
+ARG LIBGIT2_PATH=/libgit2
+ENV LIBGIT2_PATH=${LIBGIT2_PATH}
+COPY hack/Makefile ${LIBGIT2_PATH}/Makefile
+RUN set -e; \
+    echo "/usr/lib/$(xx-info triple)" > ${LIBGIT2_PATH}/INSTALL_LIBDIR \
+    && INSTALL_LIBDIR=$(cat ${LIBGIT2_PATH}/INSTALL_LIBDIR) \
+    FLAGS=$(xx-clang --print-cmake-defines) \
+    make -C ${LIBGIT2_PATH} \
+    && xx-verify $(cat ${LIBGIT2_PATH}/INSTALL_LIBDIR)/libgit2.so \
+    && mkdir -p ${LIBGIT2_PATH}/lib/ \
+    && cp -d $(cat ${LIBGIT2_PATH}/INSTALL_LIBDIR)/libgit2.so* ${LIBGIT2_PATH}/lib/

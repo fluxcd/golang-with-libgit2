@@ -9,12 +9,8 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
-    strategy:
-      fail-fast: false
-      matrix:
-        platforms:
-          - linux/amd64
-          - linux/amd64,linux/arm/v7,linux/arm64
+    env:
+      PLATFORMS: linux/amd64,linux/arm/v7,linux/arm64
     services:
       registry:
         image: registry:2
@@ -29,7 +25,7 @@ jobs:
         uses: docker/setup-qemu-action@v1
         with:
           image: tonistiigi/binfmt:latest
-          platforms: ${{ matrix.platforms }}
+          platforms: ${{ env.PLATFORMS }}
       - name: Set up Docker Buildx
         id: buildx
         uses: docker/setup-buildx-action@v1
@@ -51,15 +47,13 @@ jobs:
         with:
           context: .
           file: Dockerfile
-          platforms: ${{ matrix.platforms }}
+          platforms: ${{ env.PLATFORMS }}
           push: true
           tags: localhost:5000/golang-with-libgit2:latest
       - name: Inspect candidate
         run: |
           docker buildx imagetools inspect localhost:5000/golang-with-libgit2:latest
       - name: Test candidate
+        id: test_candidate
         run: |
-          for digest in $(docker buildx imagetools inspect localhost:5000/golang-with-libgit2:latest --raw | jq -rc '.manifests[] | .digest')
-          do
-            IMG=localhost:5000/golang-with-libgit2 TAG=latest@$digest make test
-          done
+          IMG=localhost:5000/golang-with-libgit2 make test
