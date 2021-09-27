@@ -42,7 +42,7 @@ while testing these against the git2go code before releasing the image.
 
 To make use of the image published by the `Dockerfile`, use it as a base image for your Go build. In your application
 container, ensure the [runtime dependencies](#Runtime-dependencies) are present, and copy over the `libgit2` shared
-libraries from `/libgit2/`.
+libraries from `$LIBGIT2_PATH/lib/*` (default `/libgit2/lib`).
 
 ### libgit2
 
