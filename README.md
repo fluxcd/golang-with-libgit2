@@ -30,6 +30,14 @@ This image is an attempt to solve (most of) these issues, by compiling `libgit2`
 the required dependencies at specific versions and with specific configuration, and linker options,
 while testing these against the git2go code before releasing the image.
 
+### List of known issues
+
+- [ ] [`libssh2-1` in `bullseye` depends on `libgcrypt20`][libssh2-1-misconfiguration] which uses a slimmed down ASN.1
+      parser, and does therefore has limited support for PKCS*, including the most universal PKCS#8.
+- [ ] `libgit2-1.1` depends on `libmdtls12` which [does not provide support for ED25519 (yet)][mbedtls-ed25519].
+- [ ] In some observations, a mix of mbedTLS and OpenSSL linking seemed to happen, making it harder to determine what
+      C-dependency  was the cause of a malfunction.
+
 ## Usage
 
 To make use of the image published by the `Dockerfile`, use it as a base image for your Go build. In your application
@@ -111,3 +119,4 @@ ENTRYPOINT [ "app" ]
 [Flux project]: https://github.com/fluxcd
 [libgit2-debian-tracker]: https://tracker.debian.org/pkg/libgit2
 [libssh2-1-misconfiguration]: https://bugs.debian.org/cgi-bin/bugreport.cgi?bug=668271
+[mbedtls-ed25519]: https://github.com/ARMmbed/mbedtls/issues/2452
