@@ -1,14 +1,24 @@
 BUILD_TYPE ?= "RelWithDebInfo"
 FLAGS ?=
+
 INSTALL_PREFIX ?= /usr
 INSTALL_LIBDIR ?= $(INSTALL_PREFIX)/lib
+
 LIBGIT2_VERSION ?= 1.2.0
+# Overwritten to a specific version by default for git2go support
+# Ref: https://github.com/libgit2/git2go/issues/834
 LIBGIT2_REVISION ?= 109b4c887ffb63962c7017a66fc4a1f48becb48e
+
+ifeq ($(LIBGIT2_REVISION),)
+LIBGIT2_DOWNLOAD_URL ?= https://github.com/libgit2/libgit2/archive/refs/tags/v$(LIBGIT2_VERSION).tar.gz
+else
+LIBGIT2_DOWNLOAD_URL ?= https://github.com/libgit2/libgit2/archive/$(LIBGIT2_REVISION).tar.gz
+endif
 
 $(INSTALL_LIBDIR)/libgit2.so.$(LIBGIT2_VERSION):
 	set -e; \
 	SETUP_LIBGIT2_TMP_DIR=$$(mktemp -d) \
-	&& curl -L https://github.com/libgit2/libgit2/archive/$(LIBGIT2_REVISION).tar.gz -o $$SETUP_LIBGIT2_TMP_DIR/archive.tar.gz \
+	&& curl -L $(LIBGIT2_DOWNLOAD_URL) -o $$SETUP_LIBGIT2_TMP_DIR/archive.tar.gz \
 	&& mkdir -p $$SETUP_LIBGIT2_TMP_DIR/src \
 	&& tar xzf $$SETUP_LIBGIT2_TMP_DIR/archive.tar.gz --strip 1 -C $$SETUP_LIBGIT2_TMP_DIR/src \
 	&& cmake -S $$SETUP_LIBGIT2_TMP_DIR/src -B $$SETUP_LIBGIT2_TMP_DIR/build \
