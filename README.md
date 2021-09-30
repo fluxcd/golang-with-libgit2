@@ -107,7 +107,7 @@ RUN echo "deb http://deb.debian.org/debian sid main" >> /etc/apt/sources.list \
     && rm -rf /var/lib/apt/lists/*
 
 # Copy libgit2.so*
-COPY --from=build /libgit2/lib/* /usr/local/lib/
+COPY --from=build /libgit2/lib/ /usr/local/lib/
 RUN ldconfig
 
 # Copy over binary from build
