@@ -3,11 +3,13 @@ FLAGS ?=
 
 INSTALL_PREFIX ?= /usr
 INSTALL_LIBDIR ?= $(INSTALL_PREFIX)/lib
+USE_HTTPS ?= OpenSSL
+USE_SSH ?= ON
 
-LIBGIT2_VERSION ?= 1.2.0
+LIBGIT2_VERSION ?= 1.1.1
 # Overwritten to a specific version by default for git2go support
 # Ref: https://github.com/libgit2/git2go/issues/834
-LIBGIT2_REVISION ?= 109b4c887ffb63962c7017a66fc4a1f48becb48e
+LIBGIT2_REVISION ?=
 
 ifeq ($(LIBGIT2_REVISION),)
 LIBGIT2_DOWNLOAD_URL ?= https://github.com/libgit2/libgit2/archive/refs/tags/v$(LIBGIT2_VERSION).tar.gz
@@ -34,8 +36,8 @@ $(INSTALL_LIBDIR)/libgit2.so.$(LIBGIT2_VERSION):
 	  -DUSE_BUNDLED_ZLIB:BOOL=OFF \
 	  -DUSE_HTTP_PARSER:STRING=builtin  \
 	  -DREGEX_BACKEND:STRING=builtin \
-	  -DUSE_HTTPS:STRING=OpenSSL \
-	  -DUSE_SSH:BOOL=ON \
+	  -DUSE_HTTPS:STRING=$(USE_HTTPS) \
+	  -DUSE_SSH:BOOL=$(USE_SSH) \
 	  $(FLAGS) \
 	&& cmake --build $$SETUP_LIBGIT2_TMP_DIR/build --target install \
 	&& rm -rf $$SETUP_LIBGIT2_TMP_DIR

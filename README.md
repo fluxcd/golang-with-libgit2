@@ -37,6 +37,10 @@ while testing these against the git2go code before releasing the image.
 - [ ] `libgit2-1.1` depends on `libmdtls12` which [does not provide support for ED25519 (yet)][mbedtls-ed25519].
 - [ ] In some observations, a mix of mbedTLS and OpenSSL linking seemed to happen, making it harder to determine what
       C-dependency  was the cause of a malfunction.
+- [ ] The `1.2` release of `libgit2` in combination with `git2go/v32` does not seem to work properly:
+  - [ ] [libgit2/git2go#834](https://github.com/libgit2/git2go/issues/834)
+  - [ ] [libgit2/git2go#836](https://github.com/libgit2/git2go/issues/836)
+  - [ ] [libgit2/git2go#837](https://github.com/libgit2/git2go/issues/837)
 
 ## Usage
 
