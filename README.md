@@ -37,6 +37,7 @@ while testing these against the git2go code before releasing the image.
 - [ ] `libgit2-1.1` depends on `libmdtls12` which [does not provide support for ED25519 (yet)][mbedtls-ed25519].
 - [ ] In some observations, a mix of mbedTLS and OpenSSL linking seemed to happen, making it harder to determine what
       C-dependency  was the cause of a malfunction.
+- [ ] There is [no support for ECDSA* and ED25519 hostkey types before `libgit2` `1.2.0`][libgit2-5750]
 - [ ] The `1.2` release of `libgit2` in combination with `git2go/v32` does not seem to work properly:
   - [ ] [libgit2/git2go#834](https://github.com/libgit2/git2go/issues/834)
   - [ ] [libgit2/git2go#836](https://github.com/libgit2/git2go/issues/836)
@@ -161,3 +162,4 @@ For example, `1.16.8-bullseye-libgit2-1.1.1` for an image with
 [libgit2-debian-tracker]: https://tracker.debian.org/pkg/libgit2
 [libssh2-1-misconfiguration]: https://bugs.debian.org/cgi-bin/bugreport.cgi?bug=668271
 [mbedtls-ed25519]: https://github.com/ARMmbed/mbedtls/issues/2452
+[libgit2-5750]: https://github.com/libgit2/libgit2/pull/5750
