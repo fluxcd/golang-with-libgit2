@@ -116,6 +116,39 @@ COPY --from=build /workspace/app /usr/local/bin/
 ENTRYPOINT [ "app" ]
 ```
 
+## Contributing
+
+### Updating the Go version
+
+In the `Dockerfile`, update the default value of the `GO_VERSION` to the new target version.
+
+### Updating the base image variant
+
+In the `Dockerfile`, update the `BASE_VARIANT` to the new target base variant. Then, ensure all build stages making use
+(or depend on) the base `${BASE_VARIANT}` use it in their `AS` stage defined for the new variant. For example:
+
+```Dockerfile
+ARG BASE_VARIANT=awesome-os
+...
+
+FROM --platform=$BUILDPLATFORM golang:${GO_VERSION}-${BASE_VARIANT} as go-awesome-os
+...
+
+FROM go-${BASE_VARIANT} AS build-dependencies-awesome-os
+```
+
+### Updating the `libgit2` version
+
+Change the default value of `LIBGIT2_VERSION` in `hack/Makefile`, if applicable, change the `GIT2GO_TAG` in the
+`Makefile` in the repository root as well to test against another version of [git2go][].
+
+### Releasing a new image
+
+For the `main` branch, images are pushed automatically to a tag matching the branch name, and a tag in the format of
+`sha-<Git sha>`. In addition, images are created for new tags, with as preferred format:
+`<Go SemVer>-<image variant>-libgit2-<libgit2 SemVer>`. For example, `1.16.8-bullseye-libgit2-1.1.1` for an image with
+**Go 1.16.8** based on **Debian bullseye** with **libgit2 1.1.1** included.
+
 [xx]: https://github.com/tonistiigi/xx
 [Go container image]: https://hub.docker.com/_/golang
 [libgit2]: https://github.com/libgit2/libgit2
