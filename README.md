@@ -125,7 +125,9 @@ In the `Dockerfile`, update the default value of the `GO_VERSION` to the new tar
 ### Updating the base image variant
 
 In the `Dockerfile`, update the `BASE_VARIANT` to the new target base variant. Then, ensure all build stages making use
-(or depend on) the base `${BASE_VARIANT}` use it in their `AS` stage defined for the new variant. For example:
+of (or depending on) the base `${BASE_VARIANT}`, use it in their `AS` stage defined for the new variant.
+
+For example:
 
 ```Dockerfile
 ARG BASE_VARIANT=awesome-os
@@ -139,7 +141,7 @@ FROM go-${BASE_VARIANT} AS build-dependencies-awesome-os
 
 ### Updating the `libgit2` version
 
-Change the default value of `LIBGIT2_VERSION` in `hack/Makefile`, if applicable, change the `GIT2GO_TAG` in the
+Change the default value of `LIBGIT2_VERSION` in `hack/Makefile`. If applicable, change the `GIT2GO_TAG` in the
 `Makefile` in the repository root as well to test against another version of [git2go][].
 
 ### Releasing a new image
