@@ -146,7 +146,9 @@ Change the default value of `LIBGIT2_VERSION` in `hack/Makefile`, if applicable,
 
 For the `main` branch, images are pushed automatically to a tag matching the branch name, and a tag in the format of
 `sha-<Git sha>`. In addition, images are created for new tags, with as preferred format:
-`<Go SemVer>-<image variant>-libgit2-<libgit2 SemVer>`. For example, `1.16.8-bullseye-libgit2-1.1.1` for an image with
+`<Go SemVer>-<image variant>-libgit2-<libgit2 SemVer>`.
+
+For example, `1.16.8-bullseye-libgit2-1.1.1` for an image with
 **Go 1.16.8** based on **Debian bullseye** with **libgit2 1.1.1** included.
 
 [xx]: https://github.com/tonistiigi/xx
