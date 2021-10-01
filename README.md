@@ -154,6 +154,10 @@ For the `main` branch, images are pushed automatically to a tag matching the bra
 For example, `1.16.8-bullseye-libgit2-1.1.1` for an image with
 **Go 1.16.8** based on **Debian bullseye** with **libgit2 1.1.1** included.
 
+In case changes happen to the `Dockerfile` while the `Go` or `libgit2` versions do not change, sequential tags should
+be suffixed with `-<seq num in range>`. For example, `1.16.8-bullseye-libgit2-1.1.1-2` for the **third** container image
+with these versions.
+
 [xx]: https://github.com/tonistiigi/xx
 [Go container image]: https://hub.docker.com/_/golang
 [libgit2]: https://github.com/libgit2/libgit2
