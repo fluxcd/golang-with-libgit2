@@ -1,8 +1,7 @@
 # golang-with-libgit2
 
-This repository contains a `Dockerfile` which makes use of [`tonistiigi/xx`][xx] to produce a [Go container image][]
-with a dynamic set of [libgit2][] dependencies. The image can be used to build **AMD64, ARM64 and ARMv7** binaries of Go
-projects that depend on [git2go][].
+This repository contains a `Dockerfile` which `Makefile` content can be used to build the [libgit2][] dependency
+chain for **AMD64, ARM64 and ARMv7** binaries of Go projects that depend on [git2go][]. 
 
 ### :warning: **Public usage discouraged**
 
@@ -26,8 +25,8 @@ that producing a set of dependencies that work for all end-users using OS packag
 - [fluxcd/image-automation-controller#186](https://github.com/fluxcd/image-automation-controller/issues/186)
 - [fluxcd/source-controller#439](https://github.com/fluxcd/source-controller/issues/439)
 
-This image is an attempt to solve (most of) these issues, by compiling `libgit2` ourselves, linking it with
-the required dependencies at specific versions and with specific configuration, and linker options,
+This image is an attempt to solve (most of) these issues, by providing the configuration to compile `libgit2` ourselves,
+linking it with the required dependencies at specific versions and with specific configuration, and linker options,
 while testing these against the git2go code before releasing the image.
 
 ### List of known issues
@@ -45,18 +44,9 @@ while testing these against the git2go code before releasing the image.
 
 ## Usage
 
-To make use of the image published by the `Dockerfile`, use it as a base image for your Go build. In your application
-container, ensure the [runtime dependencies](#Runtime-dependencies) are present, and copy over the `libgit2` shared
-libraries from `$LIBGIT2_PATH/lib/*` (default `/libgit2/lib`).
-
-### libgit2
-
-The `libgit2` library is installed to the expected path for the `$TARGETPLATFORM`, and building a dynamically linked Go
-binary should be possible by just running `xx-go build`. For the application image, a copy of the `.so*` files are
-available in `$LIBGIT2_PATH/lib`.
-
-In cases where you need to determine the architecture based library installation path without making use of `xx[-info]`,
-the destination path is written to `$LIBGIT2_PATH/INSTALL_LIBDIR`.
+To make use of the image published by the `Dockerfile`, copy over the `Makefile` from the image as a prerequisite to
+your Go build. Once copied over to the image, the set of targets can be used to compile `libgit2` for the
+`$BUILDPLATFORM` and/or `$TARGETPLATFORM` (see [example](#Dockerfile-example)).
 
 ### Runtime dependencies
 
@@ -74,7 +64,25 @@ The following dependencies should be present in the image running the applicatio
 ### `Dockerfile` example
 
 ```Dockerfile
-FROM hiddeco/golang-with-libgit2 AS build
+FROM --platform=$BUILDPLATFORM tonistiigi/xx:${XX_VERSION} AS xx
+FROM fluxcd/golang-with-libgit2 as libgit2
+
+FROM --platform=$BUILDPLATFORM golang:1.16.8-bullseye as build
+
+# Copy the build utiltiies
+COPY --from=xx / /
+COPY --from=libgit2 /Makefile /libgit2/
+
+# Install the libgit2 build dependencies
+RUN make -C /libgit2 cmake
+
+ARG TARGETPLATFORM
+RUN make -C /libgit2 dependencies
+
+# Compile and install libgit2
+RUN FLAGS=$(xx-clang --print-cmake-defines) make -C /libgit2 libgit2 \
+    && mkdir -p /libgit2/lib/ \
+    && cp -d /usr/lib/$(xx-info triple)/libgit2.so* /libgit2/lib/
 
 # Configure workspace
 WORKDIR /workspace
@@ -119,13 +127,18 @@ ENTRYPOINT [ "app" ]
 
 ## Contributing
 
-### Updating the Go version
+### Updating the `libgit2` version
 
-In the `Dockerfile`, update the default value of the `GO_VERSION` to the new target version.
+Change the default value of `LIBGIT2_VERSION` in `hack/Makefile`. If applicable, change the `GIT2GO_TAG` in the
+`Makefile` in the repository root as well to test against another version of [git2go][].
 
-### Updating the base image variant
+### Updating the test Go version
 
-In the `Dockerfile`, update the `BASE_VARIANT` to the new target base variant. Then, ensure all build stages making use
+In the `Dockerfile.test`, update the default value of the `GO_VERSION` to the new target version.
+
+### Updating the test base image variant
+
+In the `Dockerfile.test`, update the `BASE_VARIANT` to the new target base variant. Then, ensure all build stages making use
 of (or depending on) the base `${BASE_VARIANT}`, use it in their `AS` stage defined for the new variant.
 
 For example:
@@ -140,23 +153,16 @@ FROM --platform=$BUILDPLATFORM golang:${GO_VERSION}-${BASE_VARIANT} as go-awesom
 FROM go-${BASE_VARIANT} AS build-dependencies-awesome-os
 ```
 
-### Updating the `libgit2` version
-
-Change the default value of `LIBGIT2_VERSION` in `hack/Makefile`. If applicable, change the `GIT2GO_TAG` in the
-`Makefile` in the repository root as well to test against another version of [git2go][].
-
 ### Releasing a new image
 
 For the `main` branch, images are pushed automatically to a tag matching the branch name, and a tag in the format of
-`sha-<Git sha>`. In addition, images are created for new tags, with as preferred format:
-`<Go SemVer>-<image variant>-libgit2-<libgit2 SemVer>`.
+`sha-<Git sha>`. In addition, images are created for new tags, with as preferred format: `libgit2-<libgit2 SemVer>`.
 
-For example, `1.16.8-bullseye-libgit2-1.1.1` for an image with
-**Go 1.16.8** based on **Debian bullseye** with **libgit2 1.1.1** included.
+For example, `libgit2-1.1.1` for an image with **libgit2 1.1.1** included.
 
-In case changes happen to the `Dockerfile` while the `Go` or `libgit2` versions do not change, sequential tags should
-be suffixed with `-<seq num in range>`. For example, `1.16.8-bullseye-libgit2-1.1.1-2` for the **third** container image
-with these versions.
+In case changes happen to the `Dockerfile` while the `libgit2` version does not change, sequential tags should
+be suffixed with `-<seq num in range>`. For example, `libgit2-1.1.1-2` for the **third** container image
+with the same version.
 
 [xx]: https://github.com/tonistiigi/xx
 [Go container image]: https://hub.docker.com/_/golang
