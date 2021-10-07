@@ -28,8 +28,13 @@ ifeq ($(shell uname -s),Darwin)
 	HAS_BREW := $(shell brew --version 2>/dev/null)
 ifdef HAS_BREW
 HAS_OPENSSL := $(shell brew --prefix openssl@1.1)
+# NB: the OPENSSL_LDFLAGS ensures the path is included in the libgit2.pc
+# file. As standard brew installation doesn't appear to be system wide
+# on most macOS instances, and you thus have to tell explicitly where
+# it can be found.
 ifdef HAS_OPENSSL
 	PKG_CONFIG_PATH := $(PKG_CONFIG_PATH):$(HAS_OPENSSL)/lib/pkgconfig
+	OS_FLAGS += -DOPENSSL_LDFLAGS:STRING=-L $(HAS_OPENSSL)/lib
 else
 	$(warning "Failed to detect openssl@1.1 installation with brew. It can be installed with 'brew install openssl@1.1',")
 	$(warning "or an alternative location can be provided using the PKG_CONFIG_PATH flag, for example:")
