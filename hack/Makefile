@@ -85,7 +85,7 @@ HAS_OPENSSL := $(shell brew --prefix openssl@1.1)
 # it can be found.
 ifdef HAS_OPENSSL
 	PKG_CONFIG_PATH := $(PKG_CONFIG_PATH):$(HAS_OPENSSL)/lib/pkgconfig
-	FLAGS += -DOPENSSL_LDFLAGS:STRING=-L $(HAS_OPENSSL)/lib
+	FLAGS += -DOPENSSL_LDFLAGS:STRING='-L $(HAS_OPENSSL)/lib'
 endif
 HAS_LIBSSH2 := $(shell brew --prefix libssh2)
 ifdef HAS_LIBSSH2
