@@ -17,6 +17,7 @@ BUILD_TYPE ?= "RelWithDebInfo"
 FLAGS ?=
 USE_HTTPS ?= OFF
 USE_SSH ?= OFF
+USE_BUNDLED_ZLIB ?= OFF
 BUILD_SHARED_LIBS ?= ON
 
 # Cmake version to be installed.
@@ -66,7 +67,10 @@ ifeq (debian,$(XX_VENDOR))
 # certain key formats).
 # Ref: https://bugs.debian.org/cgi-bin/bugreport.cgi?bug=668271
 # Ref: https://github.com/ARMmbed/mbedtls/issues/2452#issuecomment-802683144
-DEPENDENCIES = zlib1g-dev
+DEPENDENCIES =
+ifneq ("OFF",$(USE_BUNDLED_ZLIB))
+DEPENDENCIES += zlib1g-dev
+endif
 ifneq ("OFF",$(USE_HTTPS))
 DEPENDENCIES += libssl-dev
 endif
@@ -74,11 +78,13 @@ ifneq ("OFF",$(USE_SSH))
 DEPENDENCIES += libssh2-1-dev
 endif
 dependencies:
+ifneq ("",$(DEPENDENCIES))
 	set -e; \
 	echo "deb http://deb.debian.org/debian sid main" > /etc/apt/sources.list.d/sid.list \
 	&& echo "deb-src http://deb.debian.org/debian sid main" /etc/apt/sources.list.d/sid.list \
 	&& xx-apt update \
 	&& xx-apt -t sid install --no-install-recommends -y $(DEPENDENCIES)
+endif
 endif
 .PHONY: dependencies
 
