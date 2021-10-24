@@ -5,7 +5,7 @@ STATIC_TEST_TAG := test
 PLATFORMS ?= linux/amd64,linux/arm/v7,linux/arm64
 BUILD_ARGS ?=
 
-GIT2GO_TAG ?= v31.6.1
+GIT2GO_TAG ?= v33.0.1
 
 .PHONY: build
 build:
