@@ -15,14 +15,16 @@ INSTALL_LIBDIR ?= $(INSTALL_PREFIX)/lib/$(shell xx-info triple)
 endif
 BUILD_TYPE ?= "RelWithDebInfo"
 FLAGS ?=
-USE_HTTPS ?= OpenSSL
-USE_SSH ?= ON
+USE_HTTPS ?= OFF
+USE_SSH ?= OFF
+USE_BUNDLED_ZLIB ?= OFF
+BUILD_SHARED_LIBS ?= ON
 
 # Cmake version to be installed.
 CMAKE_VERSION ?= 3.21.3
 
 # Libgit2 version to be compiled and installed.
-LIBGIT2_VERSION ?= 1.1.1
+LIBGIT2_VERSION ?= 1.3.0
 # In some scenarios libgit2 needs to be checked out to a specific commit.
 # This takes presidence over LIBGIT_VERSION if defined.
 # Ref: https://github.com/libgit2/git2go/issues/834
@@ -65,12 +67,24 @@ ifeq (debian,$(XX_VENDOR))
 # certain key formats).
 # Ref: https://bugs.debian.org/cgi-bin/bugreport.cgi?bug=668271
 # Ref: https://github.com/ARMmbed/mbedtls/issues/2452#issuecomment-802683144
+DEPENDENCIES =
+ifneq ("OFF",$(USE_BUNDLED_ZLIB))
+DEPENDENCIES += zlib1g-dev
+endif
+ifneq ("OFF",$(USE_HTTPS))
+DEPENDENCIES += libssl-dev
+endif
+ifneq ("OFF",$(USE_SSH))
+DEPENDENCIES += libssh2-1-dev
+endif
 dependencies:
+ifneq ("",$(DEPENDENCIES))
 	set -e; \
 	echo "deb http://deb.debian.org/debian sid main" > /etc/apt/sources.list.d/sid.list \
 	&& echo "deb-src http://deb.debian.org/debian sid main" /etc/apt/sources.list.d/sid.list \
 	&& xx-apt update \
-	&& xx-apt -t sid install --no-install-recommends -y zlib1g-dev libssl-dev libssh2-1-dev
+	&& xx-apt -t sid install --no-install-recommends -y $(DEPENDENCIES)
+endif
 endif
 .PHONY: dependencies
 
@@ -78,6 +92,7 @@ libgit2: $(LIBGIT2)
 .PHONY: libgit2
 
 ifdef HAS_BREW
+ifneq ("OFF",$(USE_HTTPS))
 HAS_OPENSSL := $(shell brew --prefix openssl@1.1)
 # NB: the OPENSSL_LDFLAGS ensures the path is included in the libgit2.pc
 # file. As a standard brew installation doesn't appear to be system wide
@@ -87,9 +102,12 @@ ifdef HAS_OPENSSL
 	PKG_CONFIG_PATH := $(PKG_CONFIG_PATH):$(HAS_OPENSSL)/lib/pkgconfig
 	FLAGS += -DOPENSSL_LDFLAGS:STRING='-L $(HAS_OPENSSL)/lib'
 endif
+endif
+ifneq ("OFF",$(USE_SSH))
 HAS_LIBSSH2 := $(shell brew --prefix libssh2)
 ifdef HAS_LIBSSH2
 	PKG_CONFIG_PATH := $(PKG_CONFIG_PATH):$(HAS_LIBSSH2)/lib/pkgconfig
+endif
 endif
 endif
 
@@ -108,7 +126,7 @@ $(LIBGIT2):
 		-DCMAKE_INSTALL_LIBDIR:PATH=$(INSTALL_LIBDIR) \
 		-DBUILD_CLAR:BOOL:BOOL=OFF \
 		-DTHREADSAFE:BOOL=ON \
-		-DBUILD_SHARED_LIBS=ON \
+		-DBUILD_SHARED_LIBS:BOOL=$(BUILD_SHARED_LIBS) \
 		-DUSE_BUNDLED_ZLIB:BOOL=OFF \
 		-DUSE_HTTP_PARSER:STRING=builtin  \
 		-DREGEX_BACKEND:STRING=builtin \
