@@ -12,7 +12,7 @@ FROM gostable AS go-linux
 FROM go-${TARGETOS} AS build-base-bullseye
 
 COPY --from=xx / /
-COPY hack/Makefile /libgit2/Makefile
+COPY ./hack/Makefile /libgit2/Makefile
 
 RUN make -C /libgit2/ cmake
 
