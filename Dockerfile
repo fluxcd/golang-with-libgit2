@@ -1,3 +1,3 @@
 FROM scratch
 
-COPY hack/Makefile Makefile
+COPY ./hack/Makefile Makefile
