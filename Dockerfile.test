@@ -1,6 +1,6 @@
 # This Dockerfile tests the hack/Makefile output against git2go.
 ARG BASE_VARIANT=bullseye
-ARG GO_VERSION=1.16.8
+ARG GO_VERSION=1.17.5
 ARG XX_VERSION=1.0.0-rc.2
 
 FROM --platform=$BUILDPLATFORM tonistiigi/xx:${XX_VERSION} AS xx
@@ -12,7 +12,7 @@ FROM gostable AS go-linux
 FROM go-${TARGETOS} AS build-base-bullseye
 
 COPY --from=xx / /
-COPY hack/Makefile /libgit2/Makefile
+COPY ./hack/Makefile /libgit2/Makefile
 
 RUN make -C /libgit2/ cmake
 

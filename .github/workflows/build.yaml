@@ -23,8 +23,9 @@ jobs:
          - 5000:5000
     steps:
       - name: Checkout
-        id: checkout
         uses: actions/checkout@v2
+      - name: Unshallow
+        run: git fetch --prune --unshallow
       - name: Set up QEMU
         id: qemu
         uses: docker/setup-qemu-action@v1
@@ -54,6 +55,7 @@ jobs:
           key: ${{ runner.os }}-buildx-ghcache-${{ github.sha }}
           restore-keys: |
             ${{ runner.os }}-buildx-ghcache-
+      - run: cat ./hack/Makefile
       - name: Build candidate image
         id: build_candidate
         uses: docker/build-push-action@v2

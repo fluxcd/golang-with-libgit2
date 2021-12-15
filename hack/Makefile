@@ -15,8 +15,8 @@ INSTALL_LIBDIR ?= $(INSTALL_PREFIX)/lib/$(shell xx-info triple)
 endif
 BUILD_TYPE ?= "RelWithDebInfo"
 FLAGS ?=
-USE_HTTPS ?= OFF
-USE_SSH ?= OFF
+USE_HTTPS ?= OpenSSL
+USE_SSH ?= ON
 USE_BUNDLED_ZLIB ?= OFF
 BUILD_SHARED_LIBS ?= ON
 
@@ -24,7 +24,7 @@ BUILD_SHARED_LIBS ?= ON
 CMAKE_VERSION ?= 3.21.3
 
 # Libgit2 version to be compiled and installed.
-LIBGIT2_VERSION ?= 1.3.0
+LIBGIT2_VERSION ?= 1.1.1
 # In some scenarios libgit2 needs to be checked out to a specific commit.
 # This takes presidence over LIBGIT_VERSION if defined.
 # Ref: https://github.com/libgit2/git2go/issues/834
@@ -127,7 +127,7 @@ $(LIBGIT2):
 		-DBUILD_CLAR:BOOL:BOOL=OFF \
 		-DTHREADSAFE:BOOL=ON \
 		-DBUILD_SHARED_LIBS:BOOL=$(BUILD_SHARED_LIBS) \
-		-DUSE_BUNDLED_ZLIB:BOOL=OFF \
+		-DUSE_BUNDLED_ZLIB:BOOL=$(USE_BUNDLED_ZLIB) \
 		-DUSE_HTTP_PARSER:STRING=builtin  \
 		-DREGEX_BACKEND:STRING=builtin \
 		-DUSE_HTTPS:STRING=$(USE_HTTPS) \
