@@ -54,12 +54,12 @@ The following dependencies should be present in the image running the applicatio
 
 - `libc6`
 - `ca-certificates`
-- `zlib1g/sid`
-- `libssl1.1/sid`
-- `libssh2-1/sid`
+- `zlib1g/bookworm`
+- `libssl1.1/bookworm`
+- `libssh2-1/bookworm`
 
-**Note:** at present, all dependencies suffixed with `sid` should be installed from Debian's `sid` (unstable) release,
-[due to a misconfiguration in `libssh2-1` for earlier versions][libssh2-1-misconfiguration].
+**Note:** at present, all dependencies suffixed with `bookworm` must be installed from Debian's `bookworm` release,
+[due to a misconfiguration in `libssh2-1` in earlier versions][libssh2-1-misconfiguration].
 
 ### `Dockerfile` example
 
@@ -67,7 +67,7 @@ The following dependencies should be present in the image running the applicatio
 FROM --platform=$BUILDPLATFORM tonistiigi/xx:${XX_VERSION} AS xx
 FROM fluxcd/golang-with-libgit2 as libgit2
 
-FROM --platform=$BUILDPLATFORM golang:1.16.8-bullseye as build
+FROM --platform=$BUILDPLATFORM golang:1.17.6-bullseye as build
 
 # Copy the build utiltiies
 COPY --from=xx / /
@@ -103,14 +103,12 @@ ARG TARGETPLATFORM
 RUN xx-go build -o app \
     main.go
 
-FROM debian:buster-slim as controller
+FROM debian:bookworm-slim as controller
 
 # Install runtime dependencies
-RUN echo "deb http://deb.debian.org/debian sid main" >> /etc/apt/sources.list \
-    && echo "deb-src http://deb.debian.org/debian sid main" >> /etc/apt/sources.list \
-    && apt update \
-    && apt install --no-install-recommends -y zlib1g/sid libssl1.1/sid libssh2-1/sid \
-    && apt install --no-install-recommends -y ca-certificates \
+RUN apt update \
+    && apt install -y zlib1g/bookworm libssl1.1 libssh2-1 \
+    && apt install -y ca-certificates \
     && apt clean \
     && apt autoremove --purge -y \
     && rm -rf /var/lib/apt/lists/*

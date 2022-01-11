@@ -47,20 +47,20 @@ endif
 cmake:
 ifeq (debian,$(XX_VENDOR))
 cmake:
-	apt-get update && apt-get install --no-install-recommends -y clang cmake
+	apt-get update && apt-get install -y clang cmake
 endif
 .PHONY: cmake
 
 base:
 ifeq (debian,$(XX_VENDOR))
 base:
-	xx-apt update && xx-apt install --no-install-recommends -y binutils gcc libc6-dev dpkg-dev
+	xx-apt update && xx-apt install -y binutils gcc libc6-dev dpkg-dev
 endif
 .PHONY: base
 
 dependencies: base
 ifeq (debian,$(XX_VENDOR))
-# Install libssh2 for $TARGETPLATFORM from "sid", as the version in "bullseye"
+# Install libssh2 for $TARGETPLATFORM from "bookworm", as the version in "bullseye"
 # has been linked against gcrypt, which causes issues with PKCS* formats.
 # We pull (sub)dependencies from there as well, to ensure all versions are aligned,
 # and not accidentially linked to e.g. mbedTLS (which has limited support for
@@ -80,10 +80,10 @@ endif
 dependencies:
 ifneq ("",$(DEPENDENCIES))
 	set -e; \
-	echo "deb http://deb.debian.org/debian sid main" > /etc/apt/sources.list.d/sid.list \
-	&& echo "deb-src http://deb.debian.org/debian sid main" /etc/apt/sources.list.d/sid.list \
+	echo "deb http://deb.debian.org/debian bookworm main" > /etc/apt/sources.list.d/bookworm.list \
+	&& echo "deb-src http://deb.debian.org/debian bookworm main" /etc/apt/sources.list.d/bookworm.list \
 	&& xx-apt update \
-	&& xx-apt -t sid install --no-install-recommends -y $(DEPENDENCIES)
+	&& xx-apt -t bookworm install -y $(DEPENDENCIES)
 endif
 endif
 .PHONY: dependencies
