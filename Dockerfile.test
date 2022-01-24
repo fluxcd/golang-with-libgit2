@@ -82,14 +82,16 @@ COPY tests/smoketest/go.mod .
 COPY tests/smoketest/go.sum .
 RUN go mod download
 
-COPY tests/smoketest/main.go .
-
 ARG TARGETPLATFORM
+
 # Some dependencies have to installed 
 # for the target platform: https://github.com/tonistiigi/xx#go--cgo
 RUN xx-apk add --no-cache \
         musl-dev \
         gcc
+
+
+COPY tests/smoketest/main.go .
 
 ENV CGO_ENABLED=1
 RUN export LIBRARY_PATH="/usr/local/$(xx-info triple)/lib:/usr/local/$(xx-info triple)/lib64:${LIBRARY_PATH}" && \
@@ -112,7 +114,6 @@ FROM ${BASE_VARIANT}
 RUN apk add git
 
 WORKDIR /root/smoketest
-COPY tests/smoketest/keys /root/smoketest/keys
 COPY --from=build \
     /root/smoketest/static-test-runner .
 
