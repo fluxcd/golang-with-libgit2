@@ -2,89 +2,132 @@ package main
 
 import (
 	"C"
-	"log"
-
+	"bufio"
 	"fmt"
+	"io"
 	"io/ioutil"
+	"log"
+	"net"
+	"net/url"
 	"os"
+	"path/filepath"
+	"strings"
+	"time"
 
 	// git2go must be aligned with libgit2 version:
 	// https://github.com/libgit2/git2go#which-go-version-to-use
 	git2go "github.com/libgit2/git2go/v33"
-)
-import (
-	"bufio"
-	"io"
-	"net"
-	"path/filepath"
-	"strings"
 
-	"golang.org/x/crypto/ssh"
+	"github.com/fluxcd/pkg/gittestserver"
+	"github.com/fluxcd/pkg/ssh"
+	"github.com/fluxcd/source-controller/pkg/git"
+	cryptossh "golang.org/x/crypto/ssh"
 	"golang.org/x/crypto/ssh/knownhosts"
 )
 
-const keysDir = "/root/smoketest/keys"
-const host = "github.com"
-
-// ssh-keyscan -t ecdsa github.com
-const knownHost_ecdsa = `# github.com:22 SSH-2.0-babeld-b6e6da7b
-github.com ecdsa-sha2-nistp256 AAAAE2VjZHNhLXNoYTItbmlzdHAyNTYAAAAIbmlzdHAyNTYAAABBBEmKSENjQEezOmxkZMy7opKgwFB9nkt5YRrYMjNuG5N87uRgg6CLrbo5wAdT/y6v0mKV0U2w0WZ2YB/++Tpockg=`
-
-// fingerprints can be validated against:
-// https://docs.github.com/en/authentication/keeping-your-account-and-data-secure/githubs-ssh-key-fingerprints
-
-// TODO: setup SSH test servers to force and test rsa/ed25519 support
-// ssh-keyscan -t rsa github.com
-const knownHost_rsa = `# github.com:22 SSH-2.0-babeld-b6e6da7b
-github.com ssh-rsa AAAAB3NzaC1yc2EAAAABIwAAAQEAq2A7hRGmdnm9tUDbO9IDSwBK6TbQa+PXYPCPy6rbTrTtw7PHkccKrpp0yVhp5HdEIcKr6pLlVDBfOLX9QUsyCOV0wzfjIJNlGEYsdlLJizHhbn2mUjvSAHQqZETYP81eFzLQNnPHt4EVVUh7VfDESU84KezmD5QlWpXLmvU31/yMf+Se8xhHTvKSCZIFImWwoG6mbUoWf9nzpIoaSjB+weqqUUmpaaasXVal72J+UX2B+2RPW3RcT0eOzQgqlJL3RKrTJvdsjE3JEAvGq3lGHSZXy28G3skua2SmVi/w4yCE6gbODqnTWlg7+wC604ydGXA8VJiS5ap43JXiUFFAaQ==`
-
-// ssh-keyscan -t ed25519 github.com
-const knownHost_ed25519 = `# github.com:22 SSH-2.0-babeld-b6e6da7b
-github.com ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIOMqqnkVzrm0SdG6UOoqKLsabgH5C9okWi0dh2l9GKJl`
+const testsDir = "/root/tests"
 
 func main() {
 	fmt.Println("Running tests...")
-	os.MkdirAll("/root/tests", 0o755)
+	os.MkdirAll(testsDir, 0o755)
+	defer os.RemoveAll(testsDir)
 
+	repoPath := "test.git"
+	server := createTestServer(repoPath)
+	if err := server.StartHTTP(); err != nil {
+		panic(fmt.Errorf("StartHTTP: %w", err))
+	}
+	defer server.StopHTTP()
+
+	httpRepoURL := fmt.Sprintf("%s/%s", server.HTTPAddressWithCredentials(), repoPath)
 	test("HTTPS clone with no options",
-		"/root/tests/https-clone-no-options",
-		"https://github.com/fluxcd/golang-with-libgit2",
+		filepath.Join(testsDir, "/https-clone-no-options"),
+		httpRepoURL,
 		&git2go.CloneOptions{Bare: true})
 
-	test("SSH clone with rsa key",
-		"/root/tests/ssh-clone-rsa",
-		"git@github.com:pjbgf/pkg.git",
-		&git2go.CloneOptions{
-			Bare: true,
-			FetchOptions: git2go.FetchOptions{
-				RemoteCallbacks: git2go.RemoteCallbacks{
-					CredentialsCallback: func(url string, username string, allowedTypes git2go.CredentialType) (*git2go.Credential, error) {
-						credential, e := git2go.NewCredentialSSHKey("git", keyPath("id_rsa.pub"), keyPath("id_rsa"), "")
-						return credential, e
-					},
-					CertificateCheckCallback: knownHostsCallback(host, []byte(knownHost_ecdsa)),
-				},
-			}})
+	if err := server.ListenSSH(); err != nil {
+		panic(fmt.Errorf("listenSSH: %w", err))
+	}
+	go func() {
+		server.StartSSH()
+	}()
+	defer server.StopSSH()
 
-	//TODO: Add test ssh server to remove dependency on having a repo with specific keys registered.
-	test("SSH clone with ed25519 key",
-		"/root/tests/ssh-clone-ed25519",
-		"git@github.com:pjbgf/pkg.git",
+	u, err := url.Parse(server.SSHAddress())
+	if err != nil {
+		panic(fmt.Errorf("ssh url Parse: %w", err))
+	}
+	knownHosts, err := ssh.ScanHostKey(u.Host, 5*time.Second)
+	if err != nil {
+		panic(fmt.Errorf("scan host key: %w", err))
+	}
+
+	sshRepoURL := fmt.Sprintf("%s/%s", server.SSHAddress(), repoPath)
+
+	rsa, err := ssh.NewRSAGenerator(4096).Generate()
+	if err != nil {
+		panic(fmt.Errorf("generating rsa key: %w", err))
+	}
+
+	test("SSH clone with rsa key",
+		filepath.Join(testsDir, "/ssh-clone-rsa"),
+		sshRepoURL,
 		&git2go.CloneOptions{
 			Bare: true,
 			FetchOptions: git2go.FetchOptions{
 				RemoteCallbacks: git2go.RemoteCallbacks{
 					CredentialsCallback: func(url string, username string, allowedTypes git2go.CredentialType) (*git2go.Credential, error) {
-						credential, e := git2go.NewCredentialSSHKey("git", keyPath("id_ed25519.pub"), keyPath("id_ed25519"), "")
-						return credential, e
+						return git2go.NewCredentialSSHKeyFromMemory("git",
+							string(rsa.PublicKey), string(rsa.PrivateKey), "")
 					},
-					CertificateCheckCallback: knownHostsCallback(host, []byte(knownHost_ecdsa)),
+					CertificateCheckCallback: knownHostsCallback(u.Host, knownHosts),
 				},
-			}})
+			},
+		})
+
+	ed25519, err := ssh.NewEd25519Generator().Generate()
+	if err != nil {
+		panic(fmt.Errorf("generating ed25519 key: %w", err))
+	}
+	test("SSH clone with ed25519 key",
+		filepath.Join(testsDir, "/ssh-clone-ed25519"),
+		sshRepoURL,
+		&git2go.CloneOptions{
+			Bare: true,
+			FetchOptions: git2go.FetchOptions{
+				RemoteCallbacks: git2go.RemoteCallbacks{
+					CredentialsCallback: func(url string, username string, allowedTypes git2go.CredentialType) (*git2go.Credential, error) {
+						return git2go.NewCredentialSSHKeyFromMemory("git",
+							string(ed25519.PublicKey), string(ed25519.PrivateKey), "")
+					},
+					CertificateCheckCallback: knownHostsCallback(u.Host, knownHosts),
+				},
+			},
+		})
+
+	//TODO: Expand tests to consider supported algorithms/hashes for hostKey verification.
 }
 
-func keyPath(keyName string) string {
-	return filepath.Join(keysDir, keyName)
+func createTestServer(repoPath string) *gittestserver.GitServer {
+	fmt.Println("Creating gitserver for SSH tests...")
+	server, err := gittestserver.NewTempGitServer()
+	if err != nil {
+		panic(fmt.Errorf("creating git test server: %w", err))
+	}
+	defer os.RemoveAll(server.Root())
+
+	server.Auth("test-user", "test-pswd")
+	server.AutoCreate()
+	server.KeyDir(filepath.Join(server.Root(), "keys"))
+
+	os.MkdirAll("testdata/git/repo", 0o755)
+	os.WriteFile("testdata/git/repo/test123", []byte("test..."), 0o644)
+	os.WriteFile("testdata/git/repo/test321", []byte("test2..."), 0o644)
+
+	if err = server.InitRepo("testdata/git/repo", git.DefaultBranch, repoPath); err != nil {
+		panic(fmt.Errorf("InitRepo: %w", err))
+	}
+	return server
 }
 
 func test(description, targetDir, repoURI string, cloneOptions *git2go.CloneOptions) {
@@ -150,14 +193,14 @@ func knownHostsCallback(host string, knownHosts []byte) git2go.CertificateCheckC
 
 type knownKey struct {
 	hosts []string
-	key   ssh.PublicKey
+	key   cryptossh.PublicKey
 }
 
 func parseKnownHosts(s string) ([]knownKey, error) {
 	var knownHosts []knownKey
 	scanner := bufio.NewScanner(strings.NewReader(s))
 	for scanner.Scan() {
-		_, hosts, pubKey, _, _, err := ssh.ParseKnownHosts(scanner.Bytes())
+		_, hosts, pubKey, _, _, err := cryptossh.ParseKnownHosts(scanner.Bytes())
 		if err != nil {
 			// Lines that aren't host public key result in EOF, like a comment
 			// line. Continue parsing the other lines.
@@ -188,8 +231,8 @@ func (k knownKey) matches(host string, hostkey git2go.HostkeyCertificate) bool {
 	}
 
 	if hostkey.Kind&git2go.HostkeySHA256 > 0 {
-		knownFingerprint := ssh.FingerprintSHA256(k.key)
-		returnedFingerprint := ssh.FingerprintSHA256(hostkey.SSHPublicKey)
+		knownFingerprint := cryptossh.FingerprintSHA256(k.key)
+		returnedFingerprint := cryptossh.FingerprintSHA256(hostkey.SSHPublicKey)
 
 		fmt.Printf("known and found fingerprints:\n%q\n%q\n",
 			knownFingerprint,

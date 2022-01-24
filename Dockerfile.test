@@ -109,6 +109,8 @@ RUN xx-verify --static static-test-runner
 # using the `RUN` statement.
 FROM ${BASE_VARIANT}
 
+RUN apk add git
+
 WORKDIR /root/smoketest
 COPY tests/smoketest/keys /root/smoketest/keys
 COPY --from=build \
