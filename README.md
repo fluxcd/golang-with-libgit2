@@ -1,7 +1,12 @@
 # golang-with-libgit2
 
-This repository contains a `Dockerfile` which `Makefile` content can be used to build the [libgit2][] dependency
-chain for **AMD64, ARM64 and ARMv7** binaries of Go projects that depend on [git2go][]. 
+This repository contains a `Dockerfile` with two files: `Makefile` and `static.sh`. 
+Both of which can be used to build the [libgit2][] dependency chain for **AMD64, ARM64 and ARMv7** binaries 
+of Go projects that depend on [git2go][]. 
+
+The `Makefile` is useful for development environments and will leverage OS specific packages to build `libgit2`.
+The `static.sh` will build all `libgit2` dependencies from source using `musl` toolchain. This enables for a full
+static binary with the freedom of configuring each of the dependencies in chain.
 
 ### :warning: **Public usage discouraged**
 
@@ -42,86 +47,20 @@ while testing these against the git2go code before releasing the image.
   - [ ] [libgit2/git2go#836](https://github.com/libgit2/git2go/issues/836)
   - [ ] [libgit2/git2go#837](https://github.com/libgit2/git2go/issues/837)
 
+---
+**NOTE**
+
+The issues above do not affect libgit2 built with `static.sh` as all its
+dependencies have been configured to be optimal for its use, as the first supported version of libgit2 is `1.3.0`.
+
+---
+
 ## Usage
 
-To make use of the image published by the `Dockerfile`, copy over the `Makefile` from the image as a prerequisite to
-your Go build. Once copied over to the image, the set of targets can be used to compile `libgit2` for the
-`$BUILDPLATFORM` and/or `$TARGETPLATFORM` (see [example](#Dockerfile-example)).
+The [Dockerfile.test](./Dockerfile.test) file provides a working example on how to statically build a golang application that has a dependency to libgit2 and git2go.
 
-### Runtime dependencies
-
-The following dependencies should be present in the image running the application:
-
-- `libc6`
-- `ca-certificates`
-- `zlib1g/bookworm`
-- `libssl1.1/bookworm`
-- `libssh2-1/bookworm`
-
-**Note:** at present, all dependencies suffixed with `bookworm` must be installed from Debian's `bookworm` release,
-[due to a misconfiguration in `libssh2-1` in earlier versions][libssh2-1-misconfiguration].
-
-### `Dockerfile` example
-
-```Dockerfile
-FROM --platform=$BUILDPLATFORM tonistiigi/xx:${XX_VERSION} AS xx
-FROM fluxcd/golang-with-libgit2 as libgit2
-
-FROM --platform=$BUILDPLATFORM golang:1.17.6-bullseye as build
-
-# Copy the build utiltiies
-COPY --from=xx / /
-COPY --from=libgit2 /Makefile /libgit2/
-
-# Install the libgit2 build dependencies
-RUN make -C /libgit2 cmake
-
-ARG TARGETPLATFORM
-RUN make -C /libgit2 dependencies
-
-# Compile and install libgit2
-RUN FLAGS=$(xx-clang --print-cmake-defines) make -C /libgit2 libgit2 \
-    && mkdir -p /libgit2/lib/ \
-    && cp -d /usr/lib/$(xx-info triple)/libgit2.so* /libgit2/lib/
-
-# Configure workspace
-WORKDIR /workspace
-
-# Copy modules manifests
-COPY go.mod go.mod
-COPY go.sum go.sum
-
-# Cache modules
-RUN go mod download
-
-# Copy source code
-COPY main.go main.go
-
-# Build the binary
-ENV CGO_ENABLED=1
-ARG TARGETPLATFORM
-RUN xx-go build -o app \
-    main.go
-
-FROM debian:bookworm-slim as controller
-
-# Install runtime dependencies
-RUN apt update \
-    && apt install -y zlib1g/bookworm libssl1.1 libssh2-1 \
-    && apt install -y ca-certificates \
-    && apt clean \
-    && apt autoremove --purge -y \
-    && rm -rf /var/lib/apt/lists/*
-
-# Copy libgit2.so*
-COPY --from=build /libgit2/lib/ /usr/local/lib/
-RUN ldconfig
-
-# Copy over binary from build
-COPY --from=build /workspace/app /usr/local/bin/
-
-ENTRYPOINT [ "app" ]
-```
+The example will statically build all dependencies based on the versions specified on `static.sh`.
+Then statically build the golang application and deploy it into an image based off `gcr.io/distroless/static`.
 
 ## Contributing
 
@@ -161,6 +100,34 @@ For example, `libgit2-1.1.1` for an image with **libgit2 1.1.1** included.
 In case changes happen to the `Dockerfile` while the `libgit2` version does not change, sequential tags should
 be suffixed with `-<seq num in range>`. For example, `libgit2-1.1.1-2` for the **third** container image
 with the same version.
+
+### Debugging cross-compilation
+
+Below are a few tips on how to overcome cross-compilation issues:
+
+1) Ensure all qemu emulators are installed:
+```sh
+docker run -it --rm --privileged tonistiigi/binfmt --install all
+```
+
+2) Check that the generated libraries are aligned with the target architecture:
+
+Leveraging `readelf` from `binutils` (i.e. `apk add binutils`), check the target machine
+architecture:
+
+```sh
+$ readelf -h /usr/local/aarch64-alpine-linux-musl/lib/libcrypto.a | grep Machine |sort -u
+  Machine:                           AArch64
+$ readelf -h /usr/local/aarch64-alpine-linux-musl/lib/libgit2.a | grep Machine | sort -u
+  Machine:                           AArch64
+$ readelf -h /usr/local/aarch64-alpine-linux-musl/lib/libssh2.a | grep Machine | sort -u
+  Machine:                           AArch64
+$ readelf -h /usr/local/aarch64-alpine-linux-musl/lib/libssl.a | grep Machine | sort -u
+  Machine:                           AArch64
+$ readelf -h /usr/local/aarch64-alpine-linux-musl/lib/libz.a | grep Machine | sort -u
+  Machine:                           AArch64
+```
+
 
 [xx]: https://github.com/tonistiigi/xx
 [Go container image]: https://hub.docker.com/_/golang

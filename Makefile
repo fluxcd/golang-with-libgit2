@@ -5,8 +5,6 @@ STATIC_TEST_TAG := test
 PLATFORMS ?= linux/amd64,linux/arm/v7,linux/arm64
 BUILD_ARGS ?=
 
-GIT2GO_TAG ?= v31.6.1
-
 .PHONY: build
 build:
 	docker buildx build \
@@ -20,14 +18,12 @@ test:
 	docker buildx build \
 		--platform=$(PLATFORMS) \
 		--tag $(IMG):$(TAG) \
-		--build-arg IMG=$(IMG) \
-		--build-arg TAG=$(TAG) \
-		--build-arg GIT2GO_TAG=$(GIT2GO_TAG) \
-		--build-arg CACHE_BUST="$(shell date --rfc-3339=ns --utc)" \
-		--file Dockerfile.test .
+		--file Dockerfile.test \
+		$(BUILD_ARGS) .
 
 .PHONY: builder
 builder:
+# create local builder
 	docker buildx create --name local-builder \
 		--platform $(PLATFORMS) \
 		--driver-opt network=host \
@@ -35,3 +31,5 @@ builder:
 		--driver-opt env.BUILDKIT_STEP_LOG_MAX_SPEED=5000000000000 \
 		--buildkitd-flags '--allow-insecure-entitlement security.insecure' \
 		--use
+# install qemu emulators
+	docker run -it --rm --privileged tonistiigi/binfmt --install all
