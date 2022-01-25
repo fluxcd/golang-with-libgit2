@@ -24,7 +24,7 @@ BUILD_SHARED_LIBS ?= ON
 CMAKE_VERSION ?= 3.21.3
 
 # Libgit2 version to be compiled and installed.
-LIBGIT2_VERSION ?= 1.1.1
+LIBGIT2_VERSION ?= 1.3.0
 # In some scenarios libgit2 needs to be checked out to a specific commit.
 # This takes precedence over LIBGIT_VERSION if defined.
 # Ref: https://github.com/libgit2/git2go/issues/834
