@@ -2,7 +2,7 @@ module github.com/fluxcd/golang-with-libgit2/tests/sample
 
 go 1.17
 
-require github.com/libgit2/git2go/v33 v33.0.6
+require github.com/libgit2/git2go/v31 v31.7.6
 
 require (
 	github.com/Microsoft/go-winio v0.4.17 // indirect
