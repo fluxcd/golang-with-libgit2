@@ -48,7 +48,7 @@ build:
 test:
 	docker buildx build \
 		--platform=$(PLATFORMS) \
-		--tag $(IMG):$(TAG) \
+		--tag $(IMG):$(TAG)-test \
 		--build-arg LIBGIT2_IMG=$(IMG) \
 		--build-arg LIBGIT2_TAG=$(TAG) \
 		--file Dockerfile.test \

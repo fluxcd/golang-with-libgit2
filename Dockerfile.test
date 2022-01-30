@@ -1,39 +1,59 @@
 ARG BASE_VARIANT=alpine
+ARG GO_VERSION=1.17.6
+ARG XX_VERSION=1.1.0
 
 ARG LIBGIT2_IMG
 ARG LIBGIT2_TAG
 
-FROM --platform=linux/amd64 ${LIBGIT2_IMG}:${LIBGIT2_TAG} as build-amd64
-FROM --platform=linux/arm64 ${LIBGIT2_IMG}:${LIBGIT2_TAG} as build-arm64
-FROM --platform=linux/arm/v7 ${LIBGIT2_IMG}:${LIBGIT2_TAG} as build-armv7
+FROM ${LIBGIT2_IMG}:${LIBGIT2_TAG} AS build-deps
 
-FROM --platform=$BUILDPLATFORM build-$TARGETARCH$TARGETVARIANT AS build
+FROM --platform=$BUILDPLATFORM tonistiigi/xx:${XX_VERSION} AS xx
 
-RUN apk add clang lld pkgconfig ca-certificates
+FROM --platform=$BUILDPLATFORM golang:${GO_VERSION}-${BASE_VARIANT} as gostable
 
-ARG TARGETPLATFORM
+FROM gostable AS go-linux
 
-# Some dependencies have to installed 
-# for the target platform: https://github.com/tonistiigi/xx#go--cgo
-RUN xx-apk add --no-cache \
-        musl-dev gcc lld binutils-gold
+# Build-base consists of build platform dependencies and xx.
+# These will be used at current arch to yield execute the cross compilations.
+FROM go-${TARGETOS} AS build-base
+
+RUN apk add clang lld pkgconfig
+
+COPY --from=xx / /
+
+# build-go-mod can still be cached at build platform architecture.
+FROM build-base as build-go-mod
 
 WORKDIR /root/smoketest
 COPY tests/smoketest/go.mod .
 COPY tests/smoketest/go.sum .
 RUN go mod download
 
+# Build stage install per target platform
+# dependency and effectively cross compile the application.
+FROM build-go-mod as build
+
+ARG TARGETPLATFORM
+
+# Some dependencies have to installed 
+# for the target platform: https://github.com/tonistiigi/xx#go--cgo
+RUN xx-apk add musl-dev gcc clang lld
+
+WORKDIR /root/smoketest
+
 COPY tests/smoketest/main.go .
+COPY --from=build-deps /usr/local/ /usr/local/
 
 ENV CGO_ENABLED=1
-RUN export LIBRARY_PATH="/usr/local/$(xx-info triple)/lib:/usr/local/$(xx-info triple)/lib64:${LIBRARY_PATH}" && \
+RUN export LIBRARY_PATH="/usr/local/$(xx-info triple):/usr/local/$(xx-info triple)/lib64" && \
     export PKG_CONFIG_PATH="/usr/local/$(xx-info triple)/lib/pkgconfig:/usr/local/$(xx-info triple)/lib64/pkgconfig" && \
-	export FLAGS="$(pkg-config --static --libs --cflags libssh2 openssl libgit2)" && \
-    CGO_LDFLAGS="${FLAGS} -static" \
-	xx-go build \
+    export FLAGS="$(pkg-config --static --libs --cflags libssh2 openssl libgit2)" && \
+    export CGO_LDFLAGS="${FLAGS} -static" && \
+    xx-go build  \
         -ldflags "-s -w" \
         -tags 'netgo,osusergo,static_build' \
-        -o static-test-runner -trimpath main.go;
+        -o static-test-runner -trimpath main.go
+
 
 # Ensure that the generated binary is valid for the target platform
 RUN xx-verify --static static-test-runner
