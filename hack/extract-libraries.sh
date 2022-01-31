@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-set -euxo pipefail
+set -eoux pipefail
 
 IMG_TAG="${IMG_TAG:-.}"
 
@@ -8,7 +8,7 @@ function extract(){
     PLATFORM=$1
     DIR=$2
 
-    id=$(docker create --platform="${PLATFORM}" "${IMG_TAG}")
+    id=$(docker create --platform="${PLATFORM}" "${IMG_TAG}" sh)
     docker cp "${id}":/usr/local - > output.tar.gz
     docker rm -v "${id}"
 
