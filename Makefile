@@ -12,6 +12,7 @@ LIBGIT2_PATH := $(TARGET_DIR)
 LIBGIT2_LIB_PATH := $(LIBGIT2_PATH)/lib
 LIBGIT2_LIB64_PATH := $(LIBGIT2_PATH)/lib64
 LIBGIT2 := $(LIBGIT2_LIB_PATH)/libgit2.a
+MUSL-CC =
 
 export CGO_ENABLED=1
 export LIBRARY_PATH=$(LIBGIT2_LIB_PATH):$(LIBGIT2_LIB64_PATH)
@@ -27,9 +28,11 @@ endif
 
 ifeq ($(shell uname -s),Linux)
 ifneq ($(shell uname -m),x86_64)
-	export CC=$(shell uname -m)-linux-musl-gcc
-	export CXX=$(shell uname -m)-linux-musl-g++
-	export AR=$(shell uname -m)-linux-musl-ar
+	MUSL-PREFIX=$(REPOSITORY_ROOT)/build/musl/aarch64-linux-musl-native/bin/aarch64-linux-musl
+	MUSL-CC=$(MUSL-PREFIX)-gcc
+	export CC=$(MUSL-PREFIX)-gcc
+	export CXX=$(MUSL-PREFIX)-g++
+	export AR=$(MUSL-PREFIX)-ar
 endif
 endif
 
@@ -67,7 +70,10 @@ builder:
 # install qemu emulators
 	docker run -it --rm --privileged tonistiigi/binfmt --install all
 
-$(LIBGIT2):
+$(MUSL-CC):
+	./hack/download-musl.sh
+
+$(LIBGIT2): $(MUSL-CC)
 ifeq ($(shell uname -s),Darwin)
 	TARGET_DIR=$(TARGET_DIR) BUILD_ROOT_DIR=$(BUILD_ROOT_DIR) \
 		./hack/static.sh all
