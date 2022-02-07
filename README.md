@@ -1,12 +1,16 @@
 # golang-with-libgit2
 
-This repository contains a `Dockerfile` with two files: `Makefile` and `static.sh`. 
+This repository contains a `Dockerfile` with the statically built libgit2 and its dependency chain.
+
+The `hack` directory contains two main files: `Makefile` and `static.sh`.
 Both of which can be used to build the [libgit2][] dependency chain for **AMD64, ARM64 and ARMv7** binaries 
 of Go projects that depend on [git2go][]. 
 
 The `Makefile` is useful for development environments and will leverage OS specific packages to build `libgit2`.
 The `static.sh` will build all `libgit2` dependencies from source using `musl` toolchain. This enables for a full
 static binary with the freedom of configuring each of the dependencies in chain.
+
+Alternatively, the statically built libraries can be pulling from the produced images for Linux or from the github release artifacts for MacOS.
 
 ### :warning: **Public usage discouraged**
 
@@ -47,17 +51,14 @@ while testing these against the git2go code before releasing the image.
   - [ ] [libgit2/git2go#836](https://github.com/libgit2/git2go/issues/836)
   - [ ] [libgit2/git2go#837](https://github.com/libgit2/git2go/issues/837)
 
----
-**NOTE**
 
-The issues above do not affect libgit2 built with `static.sh` as all its
+> **NOTE:** The issues above do not affect libgit2 built with `static.sh` as all its
 dependencies have been configured to be optimal for its use, as the first supported version of libgit2 is `1.3.0`.
 
----
 
 ## Usage
 
-The [Dockerfile.test](./Dockerfile.test) file provides a working example on how to statically build a golang application that has a dependency to libgit2 and git2go.
+The [Dockerfile.test](./Dockerfile.test) file provides a working example on how to statically build a golang application that has a dependency on libgit2 and git2go.
 
 The example will statically build all dependencies based on the versions specified on `static.sh`.
 Then statically build the golang application and deploy it into an image based off `gcr.io/distroless/static`.
