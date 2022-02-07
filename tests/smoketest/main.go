@@ -76,10 +76,6 @@ func main() {
 	if err != nil {
 		panic(fmt.Errorf("generating rsa key: %w", err))
 	}
-	privateKey := filepath.Join(testsDir, "id_rsa")
-	os.WriteFile(privateKey, rsa.PrivateKey, 0o644)
-	pubKey := filepath.Join(testsDir, "id_rsa.pub")
-	os.WriteFile(pubKey, rsa.PrivateKey, 0o644)
 
 	test("SSH clone with rsa key",
 		filepath.Join(testsDir, "/ssh-clone-rsa"),
@@ -89,8 +85,7 @@ func main() {
 			FetchOptions: &git2go.FetchOptions{
 				RemoteCallbacks: git2go.RemoteCallbacks{
 					CredentialsCallback: func(url string, username string, allowedTypes git2go.CredentialType) (*git2go.Credential, error) {
-						return git2go.NewCredentialSSHKey("git",
-							pubKey, privateKey, "")
+						return git2go.NewCredentialSSHKeyFromMemory("git", string(rsa.PublicKey), string(rsa.PrivateKey), "")
 					},
 					CertificateCheckCallback: knownHostsCallback(u.Host, knownHosts),
 				},
@@ -101,11 +96,6 @@ func main() {
 	if err != nil {
 		panic(fmt.Errorf("generating ed25519 key: %w", err))
 	}
-	privateKey = filepath.Join(testsDir, "id_ed25519")
-	os.WriteFile(privateKey, ed25519.PrivateKey, 0o644)
-	pubKey = filepath.Join(testsDir, "id_ed25519.pub")
-	os.WriteFile(pubKey, ed25519.PrivateKey, 0o644)
-
 	test("SSH clone with ed25519 key",
 		filepath.Join(testsDir, "/ssh-clone-ed25519"),
 		sshRepoURL,
@@ -114,8 +104,7 @@ func main() {
 			FetchOptions: &git2go.FetchOptions{
 				RemoteCallbacks: git2go.RemoteCallbacks{
 					CredentialsCallback: func(url string, username string, allowedTypes git2go.CredentialType) (*git2go.Credential, error) {
-						return git2go.NewCredentialSSHKey("git",
-							pubKey, privateKey, "")
+						return git2go.NewCredentialSSHKeyFromMemory("git", string(ed25519.PublicKey), string(ed25519.PrivateKey), "")
 					},
 					CertificateCheckCallback: knownHostsCallback(u.Host, knownHosts),
 				},
