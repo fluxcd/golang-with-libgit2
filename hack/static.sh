@@ -86,7 +86,7 @@ function build_openssl(){
         # if none of the above, let openssl figure it out.
     fi
 
-    ./Configure "${target_arch}" threads no-shared no-stdio no-tests zlib -fPIC -DOPENSSL_PIC \
+    ./Configure "${target_arch}" threads no-shared no-tests zlib -fPIC -DOPENSSL_PIC \
         --prefix="${TARGET_DIR}" \
         --with-zlib-include="${TARGET_DIR}/include" \
         --with-zlib-lib="${TARGET_DIR}/lib" \
