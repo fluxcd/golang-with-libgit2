@@ -4,13 +4,14 @@ on:
   push:
     branches:
       - main
+      - testdarwin2
     tags:
       - '**'
-    paths-ignore:
-      - README.md
-  pull_request:
-    paths-ignore:
-      - README.md
+  #   paths-ignore:
+  #     - README.md
+  # pull_request:
+  #   paths-ignore:
+  #     - README.md
 
 permissions:
   contents: write # needed to write releases
@@ -70,6 +71,8 @@ jobs:
             ${GITHUB_WORKSPACE}/build/libgit2-darwin-arm64/lib/libz.a 
 
           tar -zcvf darwin-libs.tar.gz ./libgit2-darwin
+        env:
+          MACOSX_DEPLOYMENT_TARGET: 10.15
 
       - name: Create Release
         if: github.event_name != 'pull_request'
