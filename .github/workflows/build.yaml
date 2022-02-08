@@ -4,14 +4,14 @@ on:
   push:
     branches:
       - main
-      - testdarwin2
+      - libgit2-*
     tags:
       - '**'
-  #   paths-ignore:
-  #     - README.md
-  # pull_request:
-  #   paths-ignore:
-  #     - README.md
+    paths-ignore:
+      - README.md
+  pull_request:
+    paths-ignore:
+      - README.md
 
 permissions:
   contents: write # needed to write releases
