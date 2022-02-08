@@ -4,14 +4,99 @@ on:
   push:
     branches:
       - main
+      - testdarwin2
     tags:
       - '**'
-    paths-ignore:
-      - README.md
-  pull_request:
-    paths-ignore:
-      - README.md
+  #   paths-ignore:
+  #     - README.md
+  # pull_request:
+  #   paths-ignore:
+  #     - README.md
+
+permissions:
+  contents: write # needed to write releases
+  packages: write # needed for ghcr access
+
 jobs:
+
+  mac-build:
+    # This job builds and releases "universal libraries" that are
+    # supported by both darwin-amd64 and darwin-arm64.
+    #
+    # First builds in amd64, then cross-compile in arm64. Later combining
+    # both outcomes onto a single binary for each static library.
+    #
+    # `macos-11` has been picked as support for arm64 was only added on Xcode 12.
+    # Although some minor versions of Catalina 10.15 can support it, at the time 
+    # of testing, GitHub's macos-10.15 did not seem to. 
+    # Cross-compiling to arm64 on that runner consistently failed.
+    runs-on: macos-11
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v2
+      - name: Build universal static libraries for Darwin
+        run: |
+          TARGET_DIR=${GITHUB_WORKSPACE}/build/libgit2-darwin-amd64 \
+          BUILD_ROOT_DIR=${GITHUB_WORKSPACE}/libgit2/build/amd \
+          ./hack/static.sh all
+          
+          TARGET_DIR=${GITHUB_WORKSPACE}/build/libgit2-darwin-arm64 \
+          BUILD_ROOT_DIR=${GITHUB_WORKSPACE}/libgit2/build/arm \
+          TARGET_ARCH=arm64 \
+          CMAKE_APPLE_SILICON_PROCESSOR=arm64 \
+          ./hack/static.sh all
+
+          mkdir -p ./libgit2-darwin/lib
+          mv ${GITHUB_WORKSPACE}/build/libgit2-darwin-amd64/include ./libgit2-darwin/
+          mv ${GITHUB_WORKSPACE}/build/libgit2-darwin-amd64/share ./libgit2-darwin/
+          mv ${GITHUB_WORKSPACE}/build/libgit2-darwin-amd64/lib/cmake ./libgit2-darwin/lib/
+          mv ${GITHUB_WORKSPACE}/build/libgit2-darwin-amd64/lib/engines-3 ./libgit2-darwin/lib/
+          mv ${GITHUB_WORKSPACE}/build/libgit2-darwin-amd64/lib/ossl-modules ./libgit2-darwin/lib/
+          mv ${GITHUB_WORKSPACE}/build/libgit2-darwin-amd64/lib/pkgconfig ./libgit2-darwin/lib/
+
+          libtool -static -o ./libgit2-darwin/lib/libcrypto.a \
+            ${GITHUB_WORKSPACE}/build/libgit2-darwin-amd64/lib/libcrypto.a \
+            ${GITHUB_WORKSPACE}/build/libgit2-darwin-arm64/lib/libcrypto.a 
+          libtool -static -o ./libgit2-darwin/lib/libgit2.a \
+            ${GITHUB_WORKSPACE}/build/libgit2-darwin-amd64/lib/libgit2.a \
+            ${GITHUB_WORKSPACE}/build/libgit2-darwin-arm64/lib/libgit2.a 
+          libtool -static -o ./libgit2-darwin/lib/libssh2.a \
+            ${GITHUB_WORKSPACE}/build/libgit2-darwin-amd64/lib/libssh2.a \
+            ${GITHUB_WORKSPACE}/build/libgit2-darwin-arm64/lib/libssh2.a 
+          libtool -static -o ./libgit2-darwin/lib/libssl.a \
+            ${GITHUB_WORKSPACE}/build/libgit2-darwin-amd64/lib/libssl.a \
+            ${GITHUB_WORKSPACE}/build/libgit2-darwin-arm64/lib/libssl.a  
+          libtool -static -o ./libgit2-darwin/lib/libz.a \
+            ${GITHUB_WORKSPACE}/build/libgit2-darwin-amd64/lib/libz.a \
+            ${GITHUB_WORKSPACE}/build/libgit2-darwin-arm64/lib/libz.a 
+
+          tar -zcvf darwin-libs.tar.gz ./libgit2-darwin
+        env:
+          MACOSX_DEPLOYMENT_TARGET: 10.15
+
+      - name: Create Release
+        if: github.event_name != 'pull_request'
+        id: create_release
+        uses: actions/create-release@v1
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        with:
+          release_name: ${{ github.ref }}
+          tag_name: ${{ github.ref }}
+          draft: false
+          prerelease: true
+      - name: Upload Release Asset
+        if: github.event_name != 'pull_request'
+        id: upload-release-asset 
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        with:
+          upload_url: ${{ steps.create_release.outputs.upload_url }}
+          asset_path: ./darwin-libs.tar.gz
+          asset_name: darwin-libs.tar.gz
+          asset_content_type: application/gzip
+
   build:
     runs-on: ubuntu-latest
     env:
@@ -55,7 +140,7 @@ jobs:
           key: ${{ runner.os }}-buildx-ghcache-${{ github.sha }}
           restore-keys: |
             ${{ runner.os }}-buildx-ghcache-
-      - run: cat ./hack/Makefile
+      - run: cat ./hack/static.sh
       - name: Build candidate image
         id: build_candidate
         uses: docker/build-push-action@v2
