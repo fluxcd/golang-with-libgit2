@@ -80,8 +80,7 @@ func main() {
 			FetchOptions: git2go.FetchOptions{
 				RemoteCallbacks: git2go.RemoteCallbacks{
 					CredentialsCallback: func(url string, username string, allowedTypes git2go.CredentialType) (*git2go.Credential, error) {
-						return git2go.NewCredentialSSHKeyFromMemory("git",
-							string(rsa.PublicKey), string(rsa.PrivateKey), "")
+						return git2go.NewCredentialSSHKeyFromMemory("git", string(rsa.PublicKey), string(rsa.PrivateKey), "")
 					},
 					CertificateCheckCallback: knownHostsCallback(u.Host, knownHosts),
 				},
@@ -100,8 +99,7 @@ func main() {
 			FetchOptions: git2go.FetchOptions{
 				RemoteCallbacks: git2go.RemoteCallbacks{
 					CredentialsCallback: func(url string, username string, allowedTypes git2go.CredentialType) (*git2go.Credential, error) {
-						return git2go.NewCredentialSSHKeyFromMemory("git",
-							string(ed25519.PublicKey), string(ed25519.PrivateKey), "")
+						return git2go.NewCredentialSSHKeyFromMemory("git", string(ed25519.PublicKey), string(ed25519.PrivateKey), "")
 					},
 					CertificateCheckCallback: knownHostsCallback(u.Host, knownHosts),
 				},
