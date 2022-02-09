@@ -11,7 +11,34 @@ on:
   pull_request:
     paths-ignore:
       - README.md
+
+permissions:
+  packages: write # needed for ghcr access
+
 jobs:
+
+  mac-build:
+    runs-on: macos-11
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v2
+      - name: Test build script for darwin-amd64
+        run: |
+          TARGET_DIR=${GITHUB_WORKSPACE}/build/libgit2-darwin-amd64 \
+          BUILD_ROOT_DIR=${GITHUB_WORKSPACE}/libgit2/build/amd \
+          ./hack/static.sh all
+        env:
+          MACOSX_DEPLOYMENT_TARGET: 10.15
+      - name: Test cross compile script for darwin-arm64
+        run: |
+          TARGET_DIR=${GITHUB_WORKSPACE}/build/libgit2-darwin-arm64 \
+          BUILD_ROOT_DIR=${GITHUB_WORKSPACE}/libgit2/build/arm \
+          TARGET_ARCH=arm64 \
+          CMAKE_APPLE_SILICON_PROCESSOR=arm64 \
+          ./hack/static.sh all
+        env:
+          MACOSX_DEPLOYMENT_TARGET: 10.15
+
   build:
     runs-on: ubuntu-latest
     env:
@@ -55,7 +82,7 @@ jobs:
           key: ${{ runner.os }}-buildx-ghcache-${{ github.sha }}
           restore-keys: |
             ${{ runner.os }}-buildx-ghcache-
-      - run: cat ./hack/Makefile
+      - run: cat ./hack/static.sh
       - name: Build candidate image
         id: build_candidate
         uses: docker/build-push-action@v2

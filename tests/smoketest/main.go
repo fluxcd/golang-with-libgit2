@@ -25,12 +25,14 @@ import (
 	"golang.org/x/crypto/ssh/knownhosts"
 )
 
-const testsDir = "/root/tests"
-
 func main() {
 	fmt.Println("Running tests...")
+	testsDir, err := filepath.Abs("./build/tests")
+	if err != nil {
+		panic(fmt.Errorf("filepath abs: %w", err))
+	}
 	os.MkdirAll(testsDir, 0o755)
-	defer os.RemoveAll(testsDir)
+	defer os.RemoveAll("./build")
 
 	repoPath := "test.git"
 	server := createTestServer(repoPath)
@@ -61,6 +63,7 @@ func main() {
 	if err != nil {
 		panic(fmt.Errorf("scan host key: %w", err))
 	}
+	fmt.Printf("known_host entry: \n%s\n", knownHosts)
 
 	sshRepoURL := fmt.Sprintf("%s/%s", server.SSHAddress(), repoPath)
 
@@ -77,8 +80,7 @@ func main() {
 			FetchOptions: git2go.FetchOptions{
 				RemoteCallbacks: git2go.RemoteCallbacks{
 					CredentialsCallback: func(url string, username string, allowedTypes git2go.CredentialType) (*git2go.Credential, error) {
-						return git2go.NewCredentialSSHKeyFromMemory("git",
-							string(rsa.PublicKey), string(rsa.PrivateKey), "")
+						return git2go.NewCredentialSSHKeyFromMemory("git", string(rsa.PublicKey), string(rsa.PrivateKey), "")
 					},
 					CertificateCheckCallback: knownHostsCallback(u.Host, knownHosts),
 				},
@@ -97,8 +99,7 @@ func main() {
 			FetchOptions: git2go.FetchOptions{
 				RemoteCallbacks: git2go.RemoteCallbacks{
 					CredentialsCallback: func(url string, username string, allowedTypes git2go.CredentialType) (*git2go.Credential, error) {
-						return git2go.NewCredentialSSHKeyFromMemory("git",
-							string(ed25519.PublicKey), string(ed25519.PrivateKey), "")
+						return git2go.NewCredentialSSHKeyFromMemory("git", string(ed25519.PublicKey), string(ed25519.PrivateKey), "")
 					},
 					CertificateCheckCallback: knownHostsCallback(u.Host, knownHosts),
 				},
@@ -120,11 +121,11 @@ func createTestServer(repoPath string) *gittestserver.GitServer {
 	server.AutoCreate()
 	server.KeyDir(filepath.Join(server.Root(), "keys"))
 
-	os.MkdirAll("testdata/git/repo", 0o755)
-	os.WriteFile("testdata/git/repo/test123", []byte("test..."), 0o644)
-	os.WriteFile("testdata/git/repo/test321", []byte("test2..."), 0o644)
+	os.MkdirAll("build/testdata/git/repo", 0o755)
+	os.WriteFile("build/testdata/git/repo/test123", []byte("test..."), 0o644)
+	os.WriteFile("build/testdata/git/repo/test321", []byte("test2..."), 0o644)
 
-	if err = server.InitRepo("testdata/git/repo", git.DefaultBranch, repoPath); err != nil {
+	if err = server.InitRepo("build/testdata/git/repo", git.DefaultBranch, repoPath); err != nil {
 		panic(fmt.Errorf("InitRepo: %w", err))
 	}
 	return server
@@ -151,6 +152,7 @@ func test(description, targetDir, repoURI string, cloneOptions *git2go.CloneOpti
 // git.SSH Transports.
 func knownHostsCallback(host string, knownHosts []byte) git2go.CertificateCheckCallback {
 	return func(cert *git2go.Certificate, valid bool, hostname string) error {
+		fmt.Printf("[knownHostsCallback] valid: %v hostname: %q\n", valid, hostname)
 		if cert == nil {
 			return fmt.Errorf("no certificate returned for %s", hostname)
 		}
@@ -164,24 +166,34 @@ func knownHostsCallback(host string, knownHosts []byte) git2go.CertificateCheckC
 
 		// First, attempt to split the configured host and port to validate
 		// the port-less hostname given to the callback.
-		h, _, err := net.SplitHostPort(host)
+		hostWithoutPort, _, err := net.SplitHostPort(host)
 		if err != nil {
 			// SplitHostPort returns an error if the host is missing
 			// a port, assume the host has no port.
-			h = host
+			hostWithoutPort = host
 		}
 
-		// Check if the configured host matches the hostname given to
-		// the callback.
-		if h != hostname {
-			return fmt.Errorf("host mismatch: %q %q\n", h, hostname)
+		// Different versions of libgit handle this differently.
+		// This fixes the case in which ports may be sent back.
+		hostnameWithoutPort, _, err := net.SplitHostPort(hostname)
+		if err != nil {
+			hostnameWithoutPort = hostname
+
+			fmt.Printf("host and hostname:\n%q\n%q\n",
+				hostWithoutPort,
+				hostnameWithoutPort)
+		}
+
+		if hostnameWithoutPort != hostWithoutPort {
+			return fmt.Errorf("host mismatch: %q %q", hostnameWithoutPort, hostWithoutPort)
 		}
 
 		// We are now certain that the configured host and the hostname
 		// given to the callback match. Use the configured host (that
 		// includes the port), and normalize it, so we can check if there
 		// is an entry for the hostname _and_ port.
-		h = knownhosts.Normalize(host)
+		h := knownhosts.Normalize(host)
+		fmt.Printf("normalised host (with port): %q\n", h)
 		for _, k := range kh {
 			if k.matches(h, cert.Hostkey) {
 				return nil
@@ -226,7 +238,7 @@ func parseKnownHosts(s string) ([]knownKey, error) {
 
 func (k knownKey) matches(host string, hostkey git2go.HostkeyCertificate) bool {
 	if !containsHost(k.hosts, host) {
-		fmt.Println("HOST NOT FOUND")
+		fmt.Printf("host not found: %q\n", host)
 		return false
 	}
 

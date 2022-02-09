@@ -1,15 +1,11 @@
 # This Dockerfile tests the hack/Makefile output against git2go.
 ARG BASE_VARIANT=alpine
-ARG GO_VERSION=1.17.6
+ARG GO_VERSION=1.17
 ARG XX_VERSION=1.1.0
 
 FROM --platform=$BUILDPLATFORM tonistiigi/xx:${XX_VERSION} AS xx
 
-FROM golang:${GO_VERSION}-${BASE_VARIANT} as gostable
-
-FROM gostable AS go-linux
-
-FROM --platform=$BUILDPLATFORM ${BASE_VARIANT} AS build-deps
+FROM --platform=$BUILDPLATFORM ${BASE_VARIANT} AS build-base
 
 RUN apk add --no-cache \
         bash \
@@ -26,15 +22,10 @@ RUN apk add --no-cache \
 
 COPY --from=xx / /
 
-ARG TARGETPLATFORM
-
-RUN xx-apk add --no-cache \
-        xx-c-essentials 
-
-RUN xx-apk add --no-cache \
-        xx-cxx-essentials 
+FROM build-base AS build-cross
 
 ARG TARGETPLATFORM
+
 RUN xx-apk add --no-cache \
         build-base \
         pkgconfig \
@@ -48,7 +39,6 @@ RUN xx-apk add --no-cache \
 WORKDIR /build
 COPY hack/static.sh .
 
-ARG TARGETPLATFORM
 ENV CC=xx-clang
 ENV CXX=xx-clang++
 
@@ -68,40 +58,76 @@ RUN ./static.sh build_libssh2
 RUN ./static.sh build_libgit2
 
 
-FROM go-${TARGETOS} AS build
+# trimmed removes all non necessary files (i.e. openssl binary).
+FROM build-cross AS trimmed
 
-# Copy cross-compilation tools
-COPY --from=xx / /
-# Copy compiled libraries
-COPY --from=build-deps /usr/local/ /usr/local/
+ARG TARGETPLATFORM
+RUN mkdir -p /trimmed/usr/local/$(xx-info triple)/ && \
+        mkdir -p /trimmed/usr/local/$(xx-info triple)/share
+
+RUN cp -r /usr/local/$(xx-info triple)/lib/ /trimmed/usr/local/$(xx-info triple)/ && \
+        cp -r /usr/local/$(xx-info triple)/lib64/ /trimmed/usr/local/$(xx-info triple)/ | true && \
+        cp -r /usr/local/$(xx-info triple)/include/ /trimmed/usr/local/$(xx-info triple)/ && \
+        cp -r /usr/local/$(xx-info triple)/share/doc/ /trimmed/usr/local/$(xx-info triple)/share/
+
+FROM scratch as libs-arm64
+COPY --from=trimmed /trimmed/ /
+
+FROM scratch as libs-amd64
+COPY --from=trimmed /trimmed/ /
+
+FROM scratch as libs-armv7
+COPY --from=trimmed /trimmed/ /
+
+FROM libs-$TARGETARCH$TARGETVARIANT as libs
+
+# Everything above this line is a copy from Dockefile.
+
+FROM --platform=$BUILDPLATFORM golang:${GO_VERSION}-${BASE_VARIANT} as gostable
+
+FROM gostable AS go-linux
+
+# Build-base consists of build platform dependencies and xx.
+# These will be used at current arch to yield execute the cross compilations.
+FROM go-${TARGETOS} AS go-base
 
 RUN apk add clang lld pkgconfig
+
+COPY --from=xx / /
+
+# build-go-mod can still be cached at build platform architecture.
+FROM go-base as build-go-mod
 
 WORKDIR /root/smoketest
 COPY tests/smoketest/go.mod .
 COPY tests/smoketest/go.sum .
 RUN go mod download
 
+# Build stage install per target platform
+# dependency and effectively cross compile the application.
+FROM build-go-mod as build
+
 ARG TARGETPLATFORM
 
 # Some dependencies have to installed 
 # for the target platform: https://github.com/tonistiigi/xx#go--cgo
-RUN xx-apk add --no-cache \
-        musl-dev \
-        gcc
+RUN xx-apk add musl-dev gcc clang lld
 
+WORKDIR /root/smoketest
 
 COPY tests/smoketest/main.go .
+COPY --from=libs /usr/local/ /usr/local/
 
 ENV CGO_ENABLED=1
-RUN export LIBRARY_PATH="/usr/local/$(xx-info triple)/lib:/usr/local/$(xx-info triple)/lib64:${LIBRARY_PATH}" && \
+RUN export LIBRARY_PATH="/usr/local/$(xx-info triple):/usr/local/$(xx-info triple)/lib64" && \
     export PKG_CONFIG_PATH="/usr/local/$(xx-info triple)/lib/pkgconfig:/usr/local/$(xx-info triple)/lib64/pkgconfig" && \
-	export FLAGS="$(pkg-config --static --libs --cflags libssh2 openssl libgit2)" && \
-    CGO_LDFLAGS="${FLAGS} -static" \
-	xx-go build \
+    export FLAGS="$(pkg-config --static --libs --cflags libssh2 openssl libgit2)" && \
+    export CGO_LDFLAGS="${FLAGS} -static" && \
+    xx-go build  \
         -ldflags "-s -w" \
         -tags 'netgo,osusergo,static_build' \
-        -o static-test-runner -trimpath main.go;
+        -o static-test-runner -trimpath main.go
+
 
 # Ensure that the generated binary is valid for the target platform
 RUN xx-verify --static static-test-runner
@@ -118,12 +144,5 @@ COPY --from=build \
     /root/smoketest/static-test-runner .
 
 ENV SSL_CERT_FILE=/etc/ssl/certs/ca-certificates.crt
-
-# To do docker run instead, replace the RUN statement with:
-# ENTRYPOINT [ "/root/smoketest/static-test-runner" ]
-
-# The approach below was preferred as it provides a way to 
-# assert the functionality across the supported architectures 
-# without any extra steps.
 
 RUN /root/smoketest/static-test-runner
