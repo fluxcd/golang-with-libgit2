@@ -72,38 +72,6 @@ jobs:
           asset_name: linux-x86_64-libs.tar.gz
           asset_content_type: application/gzip
 
-  linux-aarch64-release:
-    # Hosted on Equinix
-    # Docs: https://github.com/fluxcd/flux2/tree/main/.github/runners
-    runs-on: [self-hosted, Linux, ARM64, equinix]
-    needs: github_release
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v2
-      - name: Build static libraries
-        run: |
-          TARGET_DIR=${GITHUB_WORKSPACE}/build/libgit2-linux \
-          BUILD_ROOT_DIR=${GITHUB_WORKSPACE}/libgit2/build/amd \
-          ./hack/static.sh all
-          
-          mkdir -p ./libgit2-linux/
-          mv ${GITHUB_WORKSPACE}/build/libgit2-linux/include ./libgit2-linux/
-          mv ${GITHUB_WORKSPACE}/build/libgit2-linux/share ./libgit2-linux/
-          mv ${GITHUB_WORKSPACE}/build/libgit2-linux/lib ./libgit2-linux/
-          mv ${GITHUB_WORKSPACE}/build/libgit2-linux/lib64 ./libgit2-linux/
-
-          tar -zcvf linux-aarch64-libs.tar.gz libgit2-linux
-      - name: Upload Release Asset
-        id: upload-release-asset 
-        uses: actions/upload-release-asset@v1
-        env:
-          GITHUB_TOKEN: ${{ github.token }}
-        with:
-          upload_url: ${{ needs.github_release.outputs.release_upload_url }}
-          asset_path: ./linux-aarch64-libs.tar.gz
-          asset_name: linux-aarch64-libs.tar.gz
-          asset_content_type: application/gzip
-
   darwin-release:
     # This job builds and releases "universal libraries" that are
     # supported by both darwin-amd64 and darwin-arm64.
