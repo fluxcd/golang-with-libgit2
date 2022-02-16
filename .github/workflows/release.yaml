@@ -1,5 +1,5 @@
 ---
-name: 'Release MacOS static libraries'
+name: 'Release static libraries'
 on:
   push:
     tags:
@@ -12,12 +12,67 @@ on:
         default: 'rc'
         required: true
 
+
 permissions:
   contents: write # needed to write releases
 
 jobs:
 
-  mac-build:
+  github_release:
+    runs-on: ubuntu-latest
+    outputs:
+      release_upload_url: ${{ steps.create_release.outputs.upload_url }}
+    steps:
+      - name: Prepare
+        id: prep
+        run: |
+          VERSION="${{ github.event.inputs.tag }}-${GITHUB_SHA::8}"
+          if [[ $GITHUB_REF == refs/tags/* ]]; then
+            VERSION=${GITHUB_REF/refs\/tags\//}
+          fi
+          echo ::set-output name=VERSION::${VERSION}
+      - name: Create Release
+        id: create_release
+        uses: actions/create-release@v1
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        with:
+          release_name: ${{ steps.prep.outputs.VERSION }}
+          tag_name: ${{ steps.prep.outputs.VERSION }}
+          draft: false
+          prerelease: true
+
+  linux-amd64-release:
+    runs-on: ubuntu-latest
+    needs: github_release
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v2
+      - name: Build static libraries
+        run: |
+          TARGET_DIR=${GITHUB_WORKSPACE}/build/libgit2-linux \
+          BUILD_ROOT_DIR=${GITHUB_WORKSPACE}/libgit2/build/amd \
+          ./hack/static.sh all
+          
+          mkdir -p ./libgit2-linux/
+          mv ${GITHUB_WORKSPACE}/build/libgit2-linux/include ./libgit2-linux/
+          mv ${GITHUB_WORKSPACE}/build/libgit2-linux/share ./libgit2-linux/
+          mv ${GITHUB_WORKSPACE}/build/libgit2-linux/lib ./libgit2-linux/
+          mv ${GITHUB_WORKSPACE}/build/libgit2-linux/lib64 ./libgit2-linux/
+
+          tar -zcvf linux-x86_64-libs.tar.gz libgit2-linux
+      - name: Upload Release Asset
+        id: upload-release-asset 
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        with:
+          upload_url: ${{ needs.github_release.outputs.release_upload_url }}
+          asset_path: ./linux-x86_64-libs.tar.gz
+          asset_name: linux-x86_64-libs.tar.gz
+          asset_content_type: application/gzip
+
+  darwin-release:
     # This job builds and releases "universal libraries" that are
     # supported by both darwin-amd64 and darwin-arm64.
     #
@@ -29,6 +84,7 @@ jobs:
     # of testing, GitHub's macos-10.15 did not seem to. 
     # Cross-compiling to arm64 on that runner consistently failed.
     runs-on: macos-11
+    needs: github_release
     steps:
       - name: Checkout
         uses: actions/checkout@v2
@@ -68,35 +124,16 @@ jobs:
             ${GITHUB_WORKSPACE}/build/libgit2-darwin-amd64/lib/libz.a \
             ${GITHUB_WORKSPACE}/build/libgit2-darwin-arm64/lib/libz.a 
 
-          tar -zcvf darwin-libs.tar.gz ./libgit2-darwin
+          tar -zcvf darwin-libs.tar.gz libgit2-darwin
         env:
           MACOSX_DEPLOYMENT_TARGET: 10.15
-
-      - name: Prepare
-        id: prep
-        run: |
-          VERSION="${{ github.event.inputs.tag }}-${GITHUB_SHA::8}"
-          if [[ $GITHUB_REF == refs/tags/* ]]; then
-            VERSION=${GITHUB_REF/refs\/tags\//}
-          fi
-          echo ::set-output name=VERSION::${VERSION}
-      - name: Create Release
-        id: create_release
-        uses: actions/create-release@v1
-        env:
-          GITHUB_TOKEN: ${{ github.token }}
-        with:
-          release_name: ${{ steps.prep.outputs.VERSION }}
-          tag_name: ${{ steps.prep.outputs.VERSION }}
-          draft: false
-          prerelease: true
       - name: Upload Release Asset
         id: upload-release-asset 
         uses: actions/upload-release-asset@v1
         env:
           GITHUB_TOKEN: ${{ github.token }}
         with:
-          upload_url: ${{ steps.create_release.outputs.upload_url }}
+          upload_url: ${{ needs.github_release.outputs.release_upload_url }}
           asset_path: ./darwin-libs.tar.gz
           asset_name: darwin-libs.tar.gz
           asset_content_type: application/gzip
