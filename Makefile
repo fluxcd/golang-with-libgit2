@@ -1,5 +1,6 @@
 TAG ?= latest
-ifeq($(LIBGIT2_ONLY),true)
+
+ifeq ($(LIBGIT2_ONLY),true)
 	IMG ?= ghcr.io/fluxcd/golang-with-libgit2-only
 else
 	IMG ?= ghcr.io/fluxcd/golang-with-libgit2-all
