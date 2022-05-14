@@ -188,6 +188,44 @@ function build_libgit2(){
     popd
 }
 
+function build_libgit2_only(){
+    download_source "${LIBGIT2_URL}" "${SRC_DIR}/libgit2"
+
+    pushd "${SRC_DIR}/libgit2"
+
+    mkdir -p build
+
+    pushd build
+
+    # Set osx arch only when cross compiling on darwin
+    if [[ $OSTYPE == darwin* ]] && [ ! "${TARGET_ARCH}" = "$(uname -m)" ]; then
+        CMAKE_PARAMS=-DCMAKE_OSX_ARCHITECTURES="${TARGET_ARCH}"
+    fi
+
+    cmake "${CMAKE_PARAMS}" \
+    -DCMAKE_C_COMPILER="${C_COMPILER}" \
+    -DCMAKE_INSTALL_PREFIX="${TARGET_DIR}" \
+    -DTHREADSAFE:BOOL=ON \
+    -DBUILD_CLAR:BOOL=OFF \
+    -DBUILD_SHARED_LIBS=OFF \
+    -DCMAKE_POSITION_INDEPENDENT_CODE:BOOL=ON \
+    -DCMAKE_C_FLAGS=-fPIC \
+    -DUSE_SSH:BOOL=OFF \
+    -DHAVE_LIBSSH2_MEMORY_CREDENTIALS:BOOL=OFF \
+    -DDEPRECATE_HARD:BOOL=ON \
+    -DUSE_BUNDLED_ZLIB:BOOL=ON \
+    -DUSE_HTTPS:STRING:BOOL=OFF \
+    -DREGEX_BACKEND:STRING=builtin \
+    -DCMAKE_BUILD_TYPE="RelWithDebInfo" \
+    ..
+
+
+    cmake --build . --target install
+
+    popd
+    popd
+}
+
 function all(){
     build_libz
     build_openssl
