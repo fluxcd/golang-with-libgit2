@@ -1,5 +1,9 @@
-IMG ?= ghcr.io/fluxcd/golang-with-libgit2
 TAG ?= latest
+ifeq($(LIBGIT2_ONLY),true)
+	IMG ?= ghcr.io/fluxcd/golang-with-libgit2-only
+else
+	IMG ?= ghcr.io/fluxcd/golang-with-libgit2-all
+endif
 
 PLATFORMS ?= linux/amd64,linux/arm/v7,linux/arm64
 BUILD_ARGS ?=
@@ -13,17 +17,17 @@ LIBGIT2_LIB_PATH := $(LIBGIT2_PATH)/lib
 LIBGIT2_LIB64_PATH := $(LIBGIT2_PATH)/lib64
 LIBGIT2 := $(LIBGIT2_LIB_PATH)/libgit2.a
 MUSL-CC =
+LIBGIT2_ONLY ?=
 
 export CGO_ENABLED=1
 export LIBRARY_PATH=$(LIBGIT2_LIB_PATH):$(LIBGIT2_LIB64_PATH)
 export PKG_CONFIG_PATH=$(LIBGIT2_LIB_PATH)/pkgconfig:$(LIBGIT2_LIB64_PATH)/pkgconfig
 export CGO_CFLAGS=-I$(LIBGIT2_PATH)/include
 
-
 ifeq ($(shell uname -s),Linux)
 	export CGO_LDFLAGS=$(shell PKG_CONFIG_PATH=$(PKG_CONFIG_PATH) pkg-config --libs --static --cflags libssh2 openssl libgit2) -static
 else
-	export CGO_LDFLAGS=$(shell PKG_CONFIG_PATH=$(PKG_CONFIG_PATH) pkg-config --libs --static --cflags libssh2 openssl libgit2) -Wl,--unresolved-symbols=ignore-in-object-files -Wl,-allow-shlib-undefined -static
+	export CGO_LDFLAGS=$(shell PKG_CONFIG_PATH=$(PKG_CONFIG_PATH) pkg-config --libs --static --cflags libgit2)
 endif
 
 ifeq ($(shell uname -s),Linux)
@@ -36,17 +40,33 @@ endif
 
 GO_STATIC_FLAGS=-tags 'netgo,osusergo,static_build'
 
-
 .PHONY: build
 build:
+ifeq ($(LIBGIT2_ONLY),true)
+	docker buildx build \
+		--platform=$(PLATFORMS) \
+		--tag $(IMG):$(TAG) \
+		--file Dockerfile.libgit2-only \
+		$(BUILD_ARGS) .
+else
 	docker buildx build \
 		--platform=$(PLATFORMS) \
 		--tag $(IMG):$(TAG) \
 		--file Dockerfile \
 		$(BUILD_ARGS) .
+endif
 
 .PHONY: test
 test:
+ifeq ($(LIBGIT2_ONLY),true)
+	docker buildx build \
+		--platform=$(PLATFORMS) \
+		--tag $(IMG):$(TAG)-test \
+		--build-arg LIBGIT2_IMG=$(IMG) \
+		--build-arg LIBGIT2_TAG=$(TAG) \
+		--file Dockerfile.test-libgit2-only \
+		$(BUILD_ARGS) .
+else
 	docker buildx build \
 		--platform=$(PLATFORMS) \
 		--tag $(IMG):$(TAG)-test \
@@ -54,6 +74,7 @@ test:
 		--build-arg LIBGIT2_TAG=$(TAG) \
 		--file Dockerfile.test \
 		$(BUILD_ARGS) .
+endif
 
 .PHONY: builder
 builder:
@@ -68,13 +89,21 @@ builder:
 # install qemu emulators
 	docker run -it --rm --privileged tonistiigi/binfmt --install all
 
-
 $(LIBGIT2): $(MUSL-CC)
 ifeq ($(shell uname -s),Darwin)
+ifeq ($(LIBGIT2_ONLY),true)
+	TARGET_DIR=$(TARGET_DIR) BUILD_ROOT_DIR=$(BUILD_ROOT_DIR) \
+		./hack/static.sh build_libgit2_only
+else
 	TARGET_DIR=$(TARGET_DIR) BUILD_ROOT_DIR=$(BUILD_ROOT_DIR) \
 		./hack/static.sh all
+endif
+else
+ifeq ($(LIBGIT2_ONLY),true)
+	IMG_TAG=$(IMG):$(TAG) ./hack/extract-libraries.sh
 else
 	IMG_TAG=$(IMG):$(TAG) ./hack/extract-libraries.sh
+endif
 endif
 
 $(MUSL-CC):
