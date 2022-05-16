@@ -2,8 +2,10 @@ TAG ?= latest
 
 ifeq ($(LIBGIT2_ONLY),true)
 	IMG ?= ghcr.io/fluxcd/golang-with-libgit2-only
+	DOCKERFILE ?= Dockerfile.libgit2-only
 else
 	IMG ?= ghcr.io/fluxcd/golang-with-libgit2-all
+	DOCKERFILE ?= Dockerfile
 endif
 
 PLATFORMS ?= linux/amd64,linux/arm/v7,linux/arm64
@@ -43,43 +45,25 @@ GO_STATIC_FLAGS=-tags 'netgo,osusergo,static_build'
 
 .PHONY: build
 build:
-ifeq ($(LIBGIT2_ONLY),true)
 	docker buildx build \
 		--platform=$(PLATFORMS) \
 		--tag $(IMG):$(TAG) \
-		--file Dockerfile.libgit2-only \
+		--file $(DOCKERFILE) \
 		$(BUILD_ARGS) .
-else
-	docker buildx build \
-		--platform=$(PLATFORMS) \
-		--tag $(IMG):$(TAG) \
-		--file Dockerfile \
-		$(BUILD_ARGS) .
-endif
 
 .PHONY: test
 test:
-ifeq ($(LIBGIT2_ONLY),true)
 	docker buildx build \
 		--platform=$(PLATFORMS) \
 		--tag $(IMG):$(TAG)-test \
 		--build-arg LIBGIT2_IMG=$(IMG) \
 		--build-arg LIBGIT2_TAG=$(TAG) \
-		--file Dockerfile.test-libgit2-only \
+		--file $(DOCKERFILE) \
 		$(BUILD_ARGS) .
-else
-	docker buildx build \
-		--platform=$(PLATFORMS) \
-		--tag $(IMG):$(TAG)-test \
-		--build-arg LIBGIT2_IMG=$(IMG) \
-		--build-arg LIBGIT2_TAG=$(TAG) \
-		--file Dockerfile.test \
-		$(BUILD_ARGS) .
-endif
 
 .PHONY: builder
 builder:
-# create local builder
+	# create local builder
 	docker buildx create --name local-builder \
 		--platform $(PLATFORMS) \
 		--driver-opt network=host \
@@ -87,7 +71,7 @@ builder:
 		--driver-opt env.BUILDKIT_STEP_LOG_MAX_SPEED=5000000000000 \
 		--buildkitd-flags '--allow-insecure-entitlement security.insecure' \
 		--use
-# install qemu emulators
+	# install qemu emulators
 	docker run -it --rm --privileged tonistiigi/binfmt --install all
 
 $(LIBGIT2): $(MUSL-CC)
@@ -100,11 +84,7 @@ else
 		./hack/static.sh all
 endif
 else
-ifeq ($(LIBGIT2_ONLY),true)
 	IMG_TAG=$(IMG):$(TAG) ./hack/extract-libraries.sh
-else
-	IMG_TAG=$(IMG):$(TAG) ./hack/extract-libraries.sh
-endif
 endif
 
 $(MUSL-CC):

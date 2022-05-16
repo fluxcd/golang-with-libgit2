@@ -22,20 +22,15 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v2
-      - name: Test build script for darwin-amd64
+      - name: Test build script for darwin-amd64 - libgit2-all
         run: |
-          TARGET_DIR=${GITHUB_WORKSPACE}/build/libgit2-darwin-amd64 \
-          BUILD_ROOT_DIR=${GITHUB_WORKSPACE}/libgit2/build/amd \
-          ./hack/static.sh all
+          make dev-test
+          rm -rf ${GITHUB_WORKSPACE}/build rm -rf ${GITHUB_WORKSPACE}/libgit2
         env:
           MACOSX_DEPLOYMENT_TARGET: 10.15
-      - name: Test cross compile script for darwin-arm64
+      - name: Test build script for darwin-amd64 - libgit2-only
         run: |
-          TARGET_DIR=${GITHUB_WORKSPACE}/build/libgit2-darwin-arm64 \
-          BUILD_ROOT_DIR=${GITHUB_WORKSPACE}/libgit2/build/arm \
-          TARGET_ARCH=arm64 \
-          CMAKE_APPLE_SILICON_PROCESSOR=arm64 \
-          ./hack/static.sh all
+          LIBGIT2_ONLY=true make dev-test
         env:
           MACOSX_DEPLOYMENT_TARGET: 10.15
 
