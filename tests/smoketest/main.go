@@ -12,6 +12,10 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+
+	"bytes"
+	"crypto/sha256"
+	"hash"
 	"time"
 
 	// git2go must be aligned with libgit2 version:
@@ -23,6 +27,11 @@ import (
 	"github.com/fluxcd/source-controller/pkg/git"
 	cryptossh "golang.org/x/crypto/ssh"
 	"golang.org/x/crypto/ssh/knownhosts"
+)
+
+const (
+	TestUser = "test-user"
+	TestPass = "test-pass"
 )
 
 func main() {
@@ -45,7 +54,16 @@ func main() {
 	test("HTTPS clone with no options",
 		filepath.Join(testsDir, "/https-clone-no-options"),
 		httpRepoURL,
-		&git2go.CloneOptions{Bare: true})
+		&git2go.CloneOptions{
+			Bare: true,
+			FetchOptions: git2go.FetchOptions{
+				RemoteCallbacks: git2go.RemoteCallbacks{
+					CredentialsCallback: func(url string, username string, allowedTypes git2go.CredentialType) (*git2go.Credential, error) {
+						return git2go.NewCredentialUserpassPlaintext(TestUser, TestPass)
+					},
+				},
+			},
+		})
 
 	if err := server.ListenSSH(); err != nil {
 		panic(fmt.Errorf("listenSSH: %w", err))
@@ -80,7 +98,11 @@ func main() {
 			FetchOptions: git2go.FetchOptions{
 				RemoteCallbacks: git2go.RemoteCallbacks{
 					CredentialsCallback: func(url string, username string, allowedTypes git2go.CredentialType) (*git2go.Credential, error) {
-						return git2go.NewCredentialSSHKeyFromMemory("git", string(rsa.PublicKey), string(rsa.PrivateKey), "")
+						signer, err := cryptossh.ParsePrivateKey(rsa.PrivateKey)
+						if err != nil {
+							return nil, err
+						}
+						return git2go.NewCredentialSSHKeyFromSigner("git", signer)
 					},
 					CertificateCheckCallback: knownHostsCallback(u.Host, knownHosts),
 				},
@@ -99,7 +121,11 @@ func main() {
 			FetchOptions: git2go.FetchOptions{
 				RemoteCallbacks: git2go.RemoteCallbacks{
 					CredentialsCallback: func(url string, username string, allowedTypes git2go.CredentialType) (*git2go.Credential, error) {
-						return git2go.NewCredentialSSHKeyFromMemory("git", string(ed25519.PublicKey), string(ed25519.PrivateKey), "")
+						signer, err := cryptossh.ParsePrivateKey(ed25519.PrivateKey)
+						if err != nil {
+							return nil, err
+						}
+						return git2go.NewCredentialSSHKeyFromSigner("git", signer)
 					},
 					CertificateCheckCallback: knownHostsCallback(u.Host, knownHosts),
 				},
@@ -117,7 +143,7 @@ func createTestServer(repoPath string) *gittestserver.GitServer {
 	}
 	defer os.RemoveAll(server.Root())
 
-	server.Auth("test-user", "test-pswd")
+	server.Auth(TestUser, TestPass)
 	server.AutoCreate()
 	server.KeyDir(filepath.Join(server.Root(), "keys"))
 
@@ -242,20 +268,13 @@ func (k knownKey) matches(host string, hostkey git2go.HostkeyCertificate) bool {
 		return false
 	}
 
-	if hostkey.Kind&git2go.HostkeySHA256 > 0 {
-		knownFingerprint := cryptossh.FingerprintSHA256(k.key)
-		returnedFingerprint := cryptossh.FingerprintSHA256(hostkey.SSHPublicKey)
+	var fingerprint []byte
+	var hasher hash.Hash
 
-		fmt.Printf("known and found fingerprints:\n%q\n%q\n",
-			knownFingerprint,
-			returnedFingerprint)
-		if returnedFingerprint == knownFingerprint {
-			return true
-		}
-	}
-
-	fmt.Println("host kind not supported")
-	return false
+	fingerprint = hostkey.HashSHA256[:]
+	hasher = sha256.New()
+	hasher.Write(k.key.Marshal())
+	return bytes.Equal(hasher.Sum(nil), fingerprint)
 }
 
 func containsHost(hosts []string, host string) bool {

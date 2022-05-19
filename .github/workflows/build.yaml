@@ -22,20 +22,15 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v2
-      - name: Test build script for darwin-amd64
+      - name: Test build script for darwin-amd64 - libgit2-all
         run: |
-          TARGET_DIR=${GITHUB_WORKSPACE}/build/libgit2-darwin-amd64 \
-          BUILD_ROOT_DIR=${GITHUB_WORKSPACE}/libgit2/build/amd \
-          ./hack/static.sh all
+          make dev-test
+          rm -rf ${GITHUB_WORKSPACE}/build rm -rf ${GITHUB_WORKSPACE}/libgit2
         env:
           MACOSX_DEPLOYMENT_TARGET: 10.15
-      - name: Test cross compile script for darwin-arm64
+      - name: Test build script for darwin-amd64 - libgit2-only
         run: |
-          TARGET_DIR=${GITHUB_WORKSPACE}/build/libgit2-darwin-arm64 \
-          BUILD_ROOT_DIR=${GITHUB_WORKSPACE}/libgit2/build/arm \
-          TARGET_ARCH=arm64 \
-          CMAKE_APPLE_SILICON_PROCESSOR=arm64 \
-          ./hack/static.sh all
+          LIBGIT2_ONLY=true make dev-test
         env:
           MACOSX_DEPLOYMENT_TARGET: 10.15
 
@@ -83,24 +78,37 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-buildx-ghcache-
       - run: cat ./hack/static.sh
-      - name: Build candidate image
-        id: build_candidate
+      - name: Build candidate image - libgit2 compiled with libssh2 and openssl
+        id: build_candidate_libgit2_all
         uses: docker/build-push-action@v2
         with:
           context: .
           file: Dockerfile
           platforms: ${{ env.PLATFORMS }}
           push: true
-          tags: localhost:5000/${{ github.repository_owner }}/golang-with-libgit2:latest
+          tags: localhost:5000/${{ github.repository_owner }}/golang-with-libgit2-all:latest
           cache-from: type=local,src=/tmp/.buildx-cache
           cache-to: type=local,dest=/tmp/.buildx-cache-new,mode=max
-      - name: Inspect candidate image
+      - name: Build candidate image - libgit2 only
+        id: build_candidate_libgti2_only
+        uses: docker/build-push-action@v2
+        with:
+          context: .
+          file: Dockerfile.libgit2-only
+          platforms: ${{ env.PLATFORMS }}
+          push: true
+          tags: localhost:5000/${{ github.repository_owner }}/golang-with-libgit2-only:latest
+          cache-from: type=local,src=/tmp/.buildx-cache
+          cache-to: type=local,dest=/tmp/.buildx-cache-new,mode=max
+      - name: Inspect candidate images
         run: |
-          docker buildx imagetools inspect localhost:5000/${{ github.repository_owner }}/golang-with-libgit2:latest
-      - name: Test candidate image
+          docker buildx imagetools inspect localhost:5000/${{ github.repository_owner }}/golang-with-libgit2-all:latest
+          docker buildx imagetools inspect localhost:5000/${{ github.repository_owner }}/golang-with-libgit2-only:latest
+      - name: Test candidate images
         id: test_candidate
         run: |
-          IMG=localhost:5000/${{ github.repository_owner }}/golang-with-libgit2 make test
+          IMG=localhost:5000/${{ github.repository_owner }}/golang-with-libgit2-all make test
+          IMG=localhost:5000/${{ github.repository_owner }}/golang-with-libgit2-only LIBGIT2_ONLY=true make test
       - # Temp fix
         # https://github.com/docker/build-push-action/issues/252
         # https://github.com/moby/buildkit/issues/1896
@@ -115,26 +123,52 @@ jobs:
           registry: ghcr.io
           username: ${{ github.repository_owner }}
           password: ${{ secrets.GITHUB_TOKEN }}
-      - name: Compose release candidate metadata
-        id: meta
+      - name: Compose release candidate metadata - golang-with-libgit2-all
+        id: meta_libgit2_all
         uses: docker/metadata-action@v3
         if: github.event_name != 'pull_request'
         with:
           images: |
-            ghcr.io/${{ github.repository_owner }}/golang-with-libgit2
+            ghcr.io/${{ github.repository_owner }}/golang-with-libgit2-all
           tags: |
             type=schedule
             type=ref,event=branch
             type=ref,event=tag
             type=sha
             type=sha,format=long
-      - name: Release candidate image
-        id: release_candidate
+      - name: Release candidate image - golang-with-libgit2-all
+        id: release_candidate_libgit2_all
         if: github.event_name != 'pull_request'
         uses: docker/build-push-action@v2
         with:
           context: .
           file: Dockerfile
+          platforms: ${{ env.PLATFORMS }}
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=local,src=/tmp/.buildx-cache
+
+      - name: Compose release candidate metadata - golang-with-libgit2-only
+        id: meta_libgit2_only
+        uses: docker/metadata-action@v3
+        if: github.event_name != 'pull_request'
+        with:
+          images: |
+            ghcr.io/${{ github.repository_owner }}/golang-with-libgit2-only
+          tags: |
+            type=schedule
+            type=ref,event=branch
+            type=ref,event=tag
+            type=sha
+            type=sha,format=long
+      - name: Release candidate image - golang-with-libgit2-only
+        id: release_candidate_libgit2_only
+        if: github.event_name != 'pull_request'
+        uses: docker/build-push-action@v2
+        with:
+          context: .
+          file: Dockerfile.libgit2-only
           platforms: ${{ env.PLATFORMS }}
           push: true
           tags: ${{ steps.meta.outputs.tags }}

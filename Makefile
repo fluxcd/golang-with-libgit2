@@ -1,5 +1,12 @@
-IMG ?= ghcr.io/fluxcd/golang-with-libgit2
 TAG ?= latest
+
+ifeq ($(LIBGIT2_ONLY),true)
+	IMG ?= ghcr.io/fluxcd/golang-with-libgit2-only
+	DOCKERFILE ?= Dockerfile.libgit2-only
+else
+	IMG ?= ghcr.io/fluxcd/golang-with-libgit2-all
+	DOCKERFILE ?= Dockerfile
+endif
 
 PLATFORMS ?= linux/amd64,linux/arm/v7,linux/arm64
 BUILD_ARGS ?=
@@ -13,17 +20,17 @@ LIBGIT2_LIB_PATH := $(LIBGIT2_PATH)/lib
 LIBGIT2_LIB64_PATH := $(LIBGIT2_PATH)/lib64
 LIBGIT2 := $(LIBGIT2_LIB_PATH)/libgit2.a
 MUSL-CC =
+LIBGIT2_ONLY ?=
 
 export CGO_ENABLED=1
 export LIBRARY_PATH=$(LIBGIT2_LIB_PATH):$(LIBGIT2_LIB64_PATH)
 export PKG_CONFIG_PATH=$(LIBGIT2_LIB_PATH)/pkgconfig:$(LIBGIT2_LIB64_PATH)/pkgconfig
 export CGO_CFLAGS=-I$(LIBGIT2_PATH)/include
 
-
 ifeq ($(shell uname -s),Linux)
 	export CGO_LDFLAGS=$(shell PKG_CONFIG_PATH=$(PKG_CONFIG_PATH) pkg-config --libs --static --cflags libssh2 openssl libgit2) -static
 else
-	export CGO_LDFLAGS=$(shell PKG_CONFIG_PATH=$(PKG_CONFIG_PATH) pkg-config --libs --static --cflags libssh2 openssl libgit2) -Wl,--unresolved-symbols=ignore-in-object-files -Wl,-allow-shlib-undefined -static
+	export CGO_LDFLAGS=$(shell PKG_CONFIG_PATH=$(PKG_CONFIG_PATH) pkg-config --libs --static --cflags libgit2)
 endif
 
 ifeq ($(shell uname -s),Linux)
@@ -36,13 +43,12 @@ endif
 
 GO_STATIC_FLAGS=-tags 'netgo,osusergo,static_build'
 
-
 .PHONY: build
 build:
 	docker buildx build \
 		--platform=$(PLATFORMS) \
 		--tag $(IMG):$(TAG) \
-		--file Dockerfile \
+		--file $(DOCKERFILE) \
 		$(BUILD_ARGS) .
 
 .PHONY: test
@@ -52,12 +58,12 @@ test:
 		--tag $(IMG):$(TAG)-test \
 		--build-arg LIBGIT2_IMG=$(IMG) \
 		--build-arg LIBGIT2_TAG=$(TAG) \
-		--file Dockerfile.test \
+		--file $(DOCKERFILE) \
 		$(BUILD_ARGS) .
 
 .PHONY: builder
 builder:
-# create local builder
+	# create local builder
 	docker buildx create --name local-builder \
 		--platform $(PLATFORMS) \
 		--driver-opt network=host \
@@ -65,14 +71,18 @@ builder:
 		--driver-opt env.BUILDKIT_STEP_LOG_MAX_SPEED=5000000000000 \
 		--buildkitd-flags '--allow-insecure-entitlement security.insecure' \
 		--use
-# install qemu emulators
+	# install qemu emulators
 	docker run -it --rm --privileged tonistiigi/binfmt --install all
-
 
 $(LIBGIT2): $(MUSL-CC)
 ifeq ($(shell uname -s),Darwin)
+ifeq ($(LIBGIT2_ONLY),true)
+	TARGET_DIR=$(TARGET_DIR) BUILD_ROOT_DIR=$(BUILD_ROOT_DIR) \
+		./hack/static.sh build_libgit2_only
+else
 	TARGET_DIR=$(TARGET_DIR) BUILD_ROOT_DIR=$(BUILD_ROOT_DIR) \
 		./hack/static.sh all
+endif
 else
 	IMG_TAG=$(IMG):$(TAG) ./hack/extract-libraries.sh
 endif

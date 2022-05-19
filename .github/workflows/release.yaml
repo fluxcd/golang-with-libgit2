@@ -48,28 +48,52 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v2
-      - name: Build static libraries
+      - name: Build static libraries - libgit2 compiled with libssh2 and openssl
         run: |
           TARGET_DIR=${GITHUB_WORKSPACE}/build/libgit2-linux \
           BUILD_ROOT_DIR=${GITHUB_WORKSPACE}/libgit2/build/amd \
           ./hack/static.sh all
           
-          mkdir -p ./libgit2-linux/
-          mv ${GITHUB_WORKSPACE}/build/libgit2-linux/include ./libgit2-linux/
-          mv ${GITHUB_WORKSPACE}/build/libgit2-linux/share ./libgit2-linux/
-          mv ${GITHUB_WORKSPACE}/build/libgit2-linux/lib ./libgit2-linux/
-          mv ${GITHUB_WORKSPACE}/build/libgit2-linux/lib64 ./libgit2-linux/
+          mkdir -p ./libgit2-linux-libgit2-all/
+          mv ${GITHUB_WORKSPACE}/build/libgit2-linux/include ./libgit2-linux-libgit2-all/
+          mv ${GITHUB_WORKSPACE}/build/libgit2-linux/share ./libgit2-linux-libgit2-all/
+          mv ${GITHUB_WORKSPACE}/build/libgit2-linux/lib ./libgit2-linux-libgit2-all/
+          mv ${GITHUB_WORKSPACE}/build/libgit2-linux/lib64 ./libgit2-linux-libgit2-all/
 
-          tar -zcvf linux-x86_64-libs.tar.gz libgit2-linux
+          tar -zcvf linux-x86_64-libgit2-all-libs.tar.gz libgit2-linux-libgit2-all
+          rm -rf ${GITHUB_WORKSPACE}/build ${GITHUB_WORKSPACE}/libgit2
       - name: Upload Release Asset
-        id: upload-release-asset 
+        id: upload-release-asset-libgit2-all
         uses: actions/upload-release-asset@v1
         env:
           GITHUB_TOKEN: ${{ github.token }}
         with:
           upload_url: ${{ needs.github_release.outputs.release_upload_url }}
-          asset_path: ./linux-x86_64-libs.tar.gz
-          asset_name: linux-x86_64-libs.tar.gz
+          asset_path: ./linux-x86_64-libgit2-all-libs.tar.gz
+          asset_name: linux-x86_64-libgit2-all-libs.tar.gz
+          asset_content_type: application/gzip
+
+      - name: Build static libraries - libgit2 only
+        run: |
+          TARGET_DIR=${GITHUB_WORKSPACE}/build/libgit2-linux \
+          BUILD_ROOT_DIR=${GITHUB_WORKSPACE}/libgit2/build/amd \
+          ./hack/static.sh build_libgit2_only
+
+          mkdir -p ./libgit2-linux-libgit2-only/
+          mv ${GITHUB_WORKSPACE}/build/libgit2-linux/include ./libgit2-linux-libgit2-only/
+          mv ${GITHUB_WORKSPACE}/build/libgit2-linux/lib ./libgit2-linux-libgit2-only/
+
+          tar -zcvf linux-x86_64-libgit2-only-lib.tar.gz libgit2-linux-libgit2-only
+          rm -rf ${GITHUB_WORKSPACE}/build ${GITHUB_WORKSPACE}/libgit2
+      - name: Upload Release Asset
+        id: upload-release-asset-libgit2-only
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        with:
+          upload_url: ${{ needs.github_release.outputs.release_upload_url }}
+          asset_path: ./linux-x86_64-libgit2-only-lib.tar.gz
+          asset_name: linux-x86_64-libgit2-only-lib.tar.gz
           asset_content_type: application/gzip
 
   darwin-release:
@@ -88,7 +112,7 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v2
-      - name: Build universal static libraries for Darwin
+      - name: Build universal static libraries for Darwin - libgit2 compiled with libssh2 and openssl
         run: |
           TARGET_DIR=${GITHUB_WORKSPACE}/build/libgit2-darwin-amd64 \
           BUILD_ROOT_DIR=${GITHUB_WORKSPACE}/libgit2/build/amd \
@@ -100,40 +124,80 @@ jobs:
           CMAKE_APPLE_SILICON_PROCESSOR=arm64 \
           ./hack/static.sh all
 
-          mkdir -p ./libgit2-darwin/lib
-          mv ${GITHUB_WORKSPACE}/build/libgit2-darwin-amd64/include ./libgit2-darwin/
-          mv ${GITHUB_WORKSPACE}/build/libgit2-darwin-amd64/share ./libgit2-darwin/
-          mv ${GITHUB_WORKSPACE}/build/libgit2-darwin-amd64/lib/cmake ./libgit2-darwin/lib/
-          mv ${GITHUB_WORKSPACE}/build/libgit2-darwin-amd64/lib/engines-3 ./libgit2-darwin/lib/
-          mv ${GITHUB_WORKSPACE}/build/libgit2-darwin-amd64/lib/ossl-modules ./libgit2-darwin/lib/
-          mv ${GITHUB_WORKSPACE}/build/libgit2-darwin-amd64/lib/pkgconfig ./libgit2-darwin/lib/
+          mkdir -p ./libgit2-darwin-libgit2-all/lib
+          mv ${GITHUB_WORKSPACE}/build/libgit2-darwin-amd64/include ./libgit2-darwin-libgit2-all/
+          mv ${GITHUB_WORKSPACE}/build/libgit2-darwin-amd64/share ./libgit2-darwin-libgit2-all/
+          mv ${GITHUB_WORKSPACE}/build/libgit2-darwin-amd64/lib/cmake ./libgit2-darwin-libgt2-all/lib/
+          mv ${GITHUB_WORKSPACE}/build/libgit2-darwin-amd64/lib/engines-3 ./libgit2-darwin-libgit2-all/lib/
+          mv ${GITHUB_WORKSPACE}/build/libgit2-darwin-amd64/lib/ossl-modules ./libgit2-darwin-libgit2-all/lib/
+          mv ${GITHUB_WORKSPACE}/build/libgit2-darwin-amd64/lib/pkgconfig ./libgit2-darwin-libgit2-all/lib/
 
-          libtool -static -o ./libgit2-darwin/lib/libcrypto.a \
+          libtool -static -o ./libgit2-darwin-libgit2-all/lib/libcrypto.a \
             ${GITHUB_WORKSPACE}/build/libgit2-darwin-amd64/lib/libcrypto.a \
             ${GITHUB_WORKSPACE}/build/libgit2-darwin-arm64/lib/libcrypto.a 
-          libtool -static -o ./libgit2-darwin/lib/libgit2.a \
+
+          libtool -static -o ./libgit2-darwin-libgit2-all/lib/libgit2.a \
             ${GITHUB_WORKSPACE}/build/libgit2-darwin-amd64/lib/libgit2.a \
             ${GITHUB_WORKSPACE}/build/libgit2-darwin-arm64/lib/libgit2.a 
-          libtool -static -o ./libgit2-darwin/lib/libssh2.a \
+
+          libtool -static -o ./libgit2-darwin-libgit2-all/lib/libssh2.a \
             ${GITHUB_WORKSPACE}/build/libgit2-darwin-amd64/lib/libssh2.a \
             ${GITHUB_WORKSPACE}/build/libgit2-darwin-arm64/lib/libssh2.a 
-          libtool -static -o ./libgit2-darwin/lib/libssl.a \
+
+          libtool -static -o ./libgit2-darwin-libgit2-all/lib/libssl.a \
             ${GITHUB_WORKSPACE}/build/libgit2-darwin-amd64/lib/libssl.a \
             ${GITHUB_WORKSPACE}/build/libgit2-darwin-arm64/lib/libssl.a  
-          libtool -static -o ./libgit2-darwin/lib/libz.a \
+
+          libtool -static -o ./libgit2-darwin-libgit2-all/lib/libz.a \
             ${GITHUB_WORKSPACE}/build/libgit2-darwin-amd64/lib/libz.a \
             ${GITHUB_WORKSPACE}/build/libgit2-darwin-arm64/lib/libz.a 
 
-          tar -zcvf darwin-libs.tar.gz libgit2-darwin
+          tar -zcvf darwin-libgit2-all-libs.tar.gz libgit2-darwin-libgit2-all
+          rm -rf ${GITHUB_WORKSPACE}/build ${GITHUB_WORKSPACE}/libgit2
         env:
           MACOSX_DEPLOYMENT_TARGET: 10.15
       - name: Upload Release Asset
-        id: upload-release-asset 
+        id: upload-release-asset-libgit2-all
         uses: actions/upload-release-asset@v1
         env:
           GITHUB_TOKEN: ${{ github.token }}
         with:
           upload_url: ${{ needs.github_release.outputs.release_upload_url }}
-          asset_path: ./darwin-libs.tar.gz
-          asset_name: darwin-libs.tar.gz
+          asset_path: ./darwin-libgit2-all-libs.tar.gz
+          asset_name: darwin-libgit2-all-libs.tar.gz
+          asset_content_type: application/gzip
+
+      - name: Build universal static libraries for Darwin - libgit2 only
+        run: |
+          TARGET_DIR=${GITHUB_WORKSPACE}/build/libgit2-darwin-amd64 \
+          BUILD_ROOT_DIR=${GITHUB_WORKSPACE}/libgit2/build/amd \
+          ./hack/static.sh build_libgit2_only
+
+          TARGET_DIR=${GITHUB_WORKSPACE}/build/libgit2-darwin-arm64 \
+          BUILD_ROOT_DIR=${GITHUB_WORKSPACE}/libgit2/build/arm \
+          TARGET_ARCH=arm64 \
+          CMAKE_APPLE_SILICON_PROCESSOR=arm64 \
+          ./hack/static.sh build_libgit2_only
+
+          mkdir -p ./libgit2-darwin-libgit2-only
+          mv ${GITHUB_WORKSPACE}/build/libgit2-darwin-amd64/include ./libgit2-darwin-libgit2-only/
+          mv ${GITHUB_WORKSPACE}/build/libgit2-darwin-amd64/lib ./libgit2-darwin-libgit2-only/
+
+          libtool -static -o ./libgit2-darwin-libgit2-only/lib/libgit2.a \
+            ${GITHUB_WORKSPACE}/build/libgit2-darwin-amd64/lib/libgit2.a \
+            ${GITHUB_WORKSPACE}/build/libgit2-darwin-arm64/lib/libgit2.a
+
+          tar -zcvf darwin-libs-libgit2-only.tar.gz libgit2-darwin-libgit2-only
+          rm -rf ${GITHUB_WORKSPACE}/build ${GITHUB_WORKSPACE}/libgit2
+        env:
+          MACOSX_DEPLOYMENT_TARGET: 10.15
+      - name: Upload Release Asset
+        id: upload-release-asset-libgit2-only
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        with:
+          upload_url: ${{ needs.github_release.outputs.release_upload_url }}
+          asset_path: ./darwin-libs-libgit2-only.tar.gz
+          asset_name: darwin-libs-libgit2-only.tar.gz
           asset_content_type: application/gzip
