@@ -145,8 +145,8 @@ jobs:
           file: Dockerfile
           platforms: ${{ env.PLATFORMS }}
           push: true
-          tags: ${{ steps.meta.outputs.tags }}
-          labels: ${{ steps.meta.outputs.labels }}
+          tags: ${{ steps.meta_libgit2_all.outputs.tags }}
+          labels: ${{ steps.meta_libgit2_all.outputs.labels }}
           cache-from: type=local,src=/tmp/.buildx-cache
 
       - name: Compose release candidate metadata - golang-with-libgit2-only
@@ -171,6 +171,6 @@ jobs:
           file: Dockerfile.libgit2-only
           platforms: ${{ env.PLATFORMS }}
           push: true
-          tags: ${{ steps.meta.outputs.tags }}
-          labels: ${{ steps.meta.outputs.labels }}
+          tags: ${{ steps.meta_libgit2_only.outputs.tags }}
+          labels: ${{ steps.meta_libgit2_only.outputs.labels }}
           cache-from: type=local,src=/tmp/.buildx-cache
