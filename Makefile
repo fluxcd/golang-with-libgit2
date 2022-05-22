@@ -3,9 +3,11 @@ TAG ?= latest
 ifeq ($(LIBGIT2_ONLY),true)
 	IMG ?= ghcr.io/fluxcd/golang-with-libgit2-only
 	DOCKERFILE ?= Dockerfile.libgit2-only
+	TEST_DOCKERFILE ?= Dockerfile.test-libgit2-only
 else
 	IMG ?= ghcr.io/fluxcd/golang-with-libgit2-all
 	DOCKERFILE ?= Dockerfile
+	TEST_DOCKERFILE ?= Dockerfile.test
 endif
 
 PLATFORMS ?= linux/amd64,linux/arm/v7,linux/arm64
@@ -56,9 +58,7 @@ test:
 	docker buildx build \
 		--platform=$(PLATFORMS) \
 		--tag $(IMG):$(TAG)-test \
-		--build-arg LIBGIT2_IMG=$(IMG) \
-		--build-arg LIBGIT2_TAG=$(TAG) \
-		--file $(DOCKERFILE) \
+		--file $(TEST_DOCKERFILE) \
 		$(BUILD_ARGS) .
 
 .PHONY: builder
