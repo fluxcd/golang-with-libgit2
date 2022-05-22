@@ -127,7 +127,7 @@ jobs:
           mkdir -p ./libgit2-darwin-libgit2-all/lib
           mv ${GITHUB_WORKSPACE}/build/libgit2-darwin-amd64/include ./libgit2-darwin-libgit2-all/
           mv ${GITHUB_WORKSPACE}/build/libgit2-darwin-amd64/share ./libgit2-darwin-libgit2-all/
-          mv ${GITHUB_WORKSPACE}/build/libgit2-darwin-amd64/lib/cmake ./libgit2-darwin-libgt2-all/lib/
+          mv ${GITHUB_WORKSPACE}/build/libgit2-darwin-amd64/lib/cmake ./libgit2-darwin-libgit2-all/lib/
           mv ${GITHUB_WORKSPACE}/build/libgit2-darwin-amd64/lib/engines-3 ./libgit2-darwin-libgit2-all/lib/
           mv ${GITHUB_WORKSPACE}/build/libgit2-darwin-amd64/lib/ossl-modules ./libgit2-darwin-libgit2-all/lib/
           mv ${GITHUB_WORKSPACE}/build/libgit2-darwin-amd64/lib/pkgconfig ./libgit2-darwin-libgit2-all/lib/
