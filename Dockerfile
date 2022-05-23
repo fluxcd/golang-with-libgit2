@@ -1,4 +1,5 @@
-# This Dockerfile tests the hack/Makefile output against git2go.
+# This Dockerfile builds and packages libgit2 linked with openssl and libssh2.
+
 ARG BASE_VARIANT=alpine
 ARG GO_VERSION=1.18
 ARG XX_VERSION=1.1.0
