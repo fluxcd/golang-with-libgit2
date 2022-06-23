@@ -139,3 +139,23 @@ $ readelf -h /usr/local/aarch64-alpine-linux-musl/lib/libz.a | grep Machine | so
 [libssh2-1-misconfiguration]: https://bugs.debian.org/cgi-bin/bugreport.cgi?bug=668271
 [mbedtls-ed25519]: https://github.com/ARMmbed/mbedtls/issues/2452
 [libgit2-5750]: https://github.com/libgit2/libgit2/pull/5750
+
+## To verify artefacts
+
+Download the following files from the releases section:
+1. checksum.txt
+2. checksum.txt.pem
+3. checksum.txt.sig
+4. The compressed library files
+
+You can verify that the `checksum.txt` wasn't tampered with using `cosign` and the downloaded certificate and signature.
+
+```
+cosign verify-blob --cert checksums.txt.pem --signature checksums.txt.sig checksums.txt
+```
+
+Verify the hashes of the other files using `checksum.txt`:
+
+```
+sha256sum --ignore-missing -c checksums.txt
+```

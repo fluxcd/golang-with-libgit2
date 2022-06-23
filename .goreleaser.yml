@@ -1,0 +1,40 @@
+project_name: golang-with-libgit2
+
+builds:
+- skip: true
+
+release:
+  prerelease: auto
+  extra_files:
+    - glob: '*.tar.gz'
+
+changelog:
+  use: github-native
+
+sboms:
+  - artifacts: archive
+  - id: source
+    artifacts: source
+    documents:
+    - "{{ .ProjectName }}_{{ .Version }}_sbom.spdx.json"
+
+checksum:
+  name_template: 'checksums.txt'
+  extra_files:
+    - glob: '*.tar.gz'
+
+source:
+  enabled: true
+
+signs:
+  - cmd: cosign
+    env:
+      - COSIGN_EXPERIMENTAL=1
+    certificate: '${artifact}.pem'
+    args:
+      - sign-blob
+      - '--output-certificate=${certificate}'
+      - '--output-signature=${signature}'
+      - '${artifact}'
+    artifacts: checksum
+    output: true
