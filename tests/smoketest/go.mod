@@ -1,6 +1,6 @@
 module github.com/fluxcd/golang-with-libgit2/tests/sample
 
-go 1.17
+go 1.18
 
 require (
 	github.com/fluxcd/pkg/gittestserver v0.5.2
