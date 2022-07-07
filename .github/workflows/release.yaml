@@ -23,7 +23,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
-        uses: actions/checkout@v2
+        uses: actions/checkout@v3
       - name: Build static libraries - libgit2 compiled with libssh2 and openssl
         run: |
           TARGET_DIR=${GITHUB_WORKSPACE}/build/libgit2-linux \
@@ -71,7 +71,7 @@ jobs:
     runs-on: macos-11
     steps:
       - name: Checkout
-        uses: actions/checkout@v2
+        uses: actions/checkout@v3
       - name: Build universal static libraries for Darwin - libgit2 compiled with libssh2 and openssl
         run: |
           TARGET_DIR=${GITHUB_WORKSPACE}/build/libgit2-darwin-amd64 \
@@ -151,12 +151,12 @@ jobs:
     needs: [linux-amd64-release, darwin-release]
     if:  ${{ always() && contains(join(needs.*.result, ','), 'success') }}
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v3
         with:
           fetch-depth: 0
-      - uses: actions/setup-go@v2
+      - uses: actions/setup-go@v3
         with:
-          go-version: 1.17.x
+          go-version: 1.18.x
       - name: Setup Cosign
         uses: sigstore/cosign-installer@main
       - name: Setup Syft

@@ -94,13 +94,9 @@ FROM go-${BASE_VARIANT} AS build-dependencies-awesome-os
 ### Releasing a new image
 
 For the `main` branch, images are pushed automatically to a tag matching the branch name, and a tag in the format of
-`sha-<Git sha>`. In addition, images are created for new tags, with as preferred format: `libgit2-<libgit2 SemVer>`.
+`sha-<Git sha>`. In addition, images are created for new tags, with as preferred format: `v<SemVer>`.
 
-For example, `libgit2-1.1.1` for an image with **libgit2 1.1.1** included.
-
-In case changes happen to the `Dockerfile` while the `libgit2` version does not change, sequential tags should
-be suffixed with `-<seq num in range>`. For example, `libgit2-1.1.1-2` for the **third** container image
-with the same version.
+For example, `v0.1.0`.
 
 ### Debugging cross-compilation
 
