@@ -2,7 +2,7 @@
 
 set -euxo pipefail
 
-LIBGIT2_URL="${LIBGIT2_URL:-https://github.com/libgit2/libgit2/archive/refs/tags/v1.3.1.tar.gz}"
+LIBGIT2_URL="${LIBGIT2_URL:-https://github.com/libgit2/libgit2/archive/refs/tags/v1.3.2.tar.gz}"
 OPENSSL_URL="${OPENSSL_URL:-https://github.com/openssl/openssl/archive/refs/tags/openssl-3.0.2.tar.gz}"
 LIBSSH2_URL="${LIBSSH2_URL:-https://github.com/libssh2/libssh2/archive/refs/tags/libssh2-1.10.0.tar.gz}"
 
