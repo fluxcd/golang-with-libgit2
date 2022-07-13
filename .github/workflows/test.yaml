@@ -1,0 +1,45 @@
+---
+name: "Test"
+on:
+  push:
+    branches:
+      - main
+    paths-ignore:
+      - README.md
+  pull_request:
+    paths-ignore:
+      - README.md
+
+permissions: {}
+
+jobs:
+  darwin-dev-test:
+    strategy:
+      matrix:
+        libgit_only: [true, false]
+    runs-on: macos-11
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+      - name: Test build script for darwin-amd64
+        run: |
+          rm -rf ${GITHUB_WORKSPACE}/build
+          make dev-test
+        env:
+          LIBGIT2_ONLY: ${{ matrix.libgit_only }}
+          MACOSX_DEPLOYMENT_TARGET: 10.15
+
+  linux-dev-test:
+    strategy:
+      matrix:
+        libgit_only: [true, false]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+      - name: Test build script for linux-amd64
+        run: |
+          rm -rf ${GITHUB_WORKSPACE}/build
+          make dev-test
+        env:
+          LIBGIT2_ONLY: ${{ matrix.libgit_only }}

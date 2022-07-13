@@ -17,24 +17,8 @@ permissions:
   id-token: write # needed for keyless signing
 
 jobs:
-
-  mac-build:
-    runs-on: macos-11
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v3
-      - name: Test build script for darwin-amd64 - libgit2-all
-        run: |
-          make dev-test
-          rm -rf ${GITHUB_WORKSPACE}/build rm -rf ${GITHUB_WORKSPACE}/libgit2
-        env:
-          MACOSX_DEPLOYMENT_TARGET: 10.15
-      - name: Test build script for darwin-amd64 - libgit2-only
-        run: |
-          LIBGIT2_ONLY=true make dev-test
-        env:
-          MACOSX_DEPLOYMENT_TARGET: 10.15
-
+  # changing this job name for some reason caused GitHub checks to
+  # hang at `Expected — Waiting for status to be reported`. 
   build:
     runs-on: ubuntu-latest
     env:
@@ -147,7 +131,7 @@ jobs:
             cosign sign $image
           done
 
-  build-libgit2-only:
+  docker-build-libgit2-only:
     runs-on: ubuntu-latest
     env:
       PLATFORMS: linux/amd64,linux/arm/v7,linux/arm64
