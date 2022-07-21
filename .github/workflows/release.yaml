@@ -179,8 +179,8 @@ jobs:
           fi
 
           mkdir ./darwin-libgit2-only
-          mv ${GITHUB_WORKSPACE}/build/libgit2-darwin-amd64/include ./darwin-libgit2-only/
-          mv ${GITHUB_WORKSPACE}/build/libgit2-darwin-amd64/lib ./darwin-libgit2-only/
+          cp -r ${GITHUB_WORKSPACE}/build/libgit2-darwin-amd64/include ./darwin-libgit2-only/
+          cp -r ${GITHUB_WORKSPACE}/build/libgit2-darwin-amd64/lib ./darwin-libgit2-only/
 
           libtool -static -o ./darwin-libgit2-only/lib/libgit2.a \
             ${GITHUB_WORKSPACE}/build/libgit2-darwin-amd64/lib/libgit2.a \
