@@ -7,8 +7,8 @@ Both of which can be used to build the [libgit2][] dependency chain for **AMD64,
 of Go projects that depend on [git2go][]. 
 
 The `Makefile` is useful for development environments and will leverage OS specific packages to build `libgit2`.
-The `static.sh` will build all `libgit2` dependencies from source using `musl` toolchain. This enables for a full
-static binary with the freedom of configuring each of the dependencies in chain.
+The `static.sh` builds a `libgit2` static library without linking it to either openssl or libssh2, resulting
+in a static library that will largely depend on Smart Transport to work.
 
 Alternatively, the statically built libraries can be pulling from the produced images for Linux or from the github release artifacts for MacOS.
 
