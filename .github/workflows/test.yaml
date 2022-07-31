@@ -14,9 +14,6 @@ permissions: {}
 
 jobs:
   darwin-dev-test:
-    strategy:
-      matrix:
-        libgit_only: [true, false]
     runs-on: macos-11
     steps:
       - name: Checkout
@@ -26,13 +23,9 @@ jobs:
           rm -rf ${GITHUB_WORKSPACE}/build
           make dev-test
         env:
-          LIBGIT2_ONLY: ${{ matrix.libgit_only }}
           MACOSX_DEPLOYMENT_TARGET: 10.15
 
   linux-dev-test:
-    strategy:
-      matrix:
-        libgit_only: [true, false]
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -41,5 +34,3 @@ jobs:
         run: |
           rm -rf ${GITHUB_WORKSPACE}/build
           make dev-test
-        env:
-          LIBGIT2_ONLY: ${{ matrix.libgit_only }}
