@@ -2,7 +2,7 @@
 
 ARG BASE_VARIANT=alpine
 ARG GO_VERSION=1.18
-ARG XX_VERSION=1.1.0
+ARG XX_VERSION=1.1.2
 
 FROM --platform=$BUILDPLATFORM tonistiigi/xx:${XX_VERSION} AS xx
 
@@ -129,5 +129,6 @@ COPY --from=build \
     /root/smoketest/static-test-runner .
 
 ENV SSL_CERT_FILE=/etc/ssl/certs/ca-certificates.crt
+ENV ALLOW_THREADLESS_LIBGIT2=true
 
 RUN /root/smoketest/static-test-runner
