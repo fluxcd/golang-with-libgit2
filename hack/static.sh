@@ -46,7 +46,9 @@ function build_libgit2_only(){
     cmake "${CMAKE_PARAMS}" \
     -DCMAKE_C_COMPILER="${C_COMPILER}" \
     -DCMAKE_INSTALL_PREFIX="${TARGET_DIR}" \
-    -DTHREADSAFE:BOOL=ON \
+    -DTHREADSAFE:BOOL=OFF \
+    -DGIT_THREADS:BOOL=OFF \
+    -DUSE_THREADS:BOOL=OFF \
     -DBUILD_CLAR:BOOL=OFF \
     -DBUILD_SHARED_LIBS=OFF \
     -DCMAKE_POSITION_INDEPENDENT_CODE:BOOL=ON \
@@ -59,7 +61,6 @@ function build_libgit2_only(){
     -DREGEX_BACKEND:STRING=builtin \
     -DCMAKE_BUILD_TYPE="RelWithDebInfo" \
     ..
-
 
     cmake --build . --target install
 

@@ -36,6 +36,9 @@ const (
 
 func main() {
 	fmt.Println("Running tests...")
+
+	ensureNoThread()
+
 	testsDir, err := filepath.Abs("./build/tests")
 	if err != nil {
 		panic(fmt.Errorf("filepath abs: %w", err))
@@ -133,6 +136,12 @@ func main() {
 		})
 
 	//TODO: Expand tests to consider supported algorithms/hashes for hostKey verification.
+}
+
+func ensureNoThread() {
+	if git2go.Features()&git2go.FeatureThreads != 0 {
+		panic("libgit2 must not be build with thread support")
+	}
 }
 
 func createTestServer(repoPath string) *gittestserver.GitServer {
