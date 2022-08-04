@@ -129,6 +129,5 @@ COPY --from=build \
     /root/smoketest/static-test-runner .
 
 ENV SSL_CERT_FILE=/etc/ssl/certs/ca-certificates.crt
-ENV ALLOW_THREADLESS_LIBGIT2=true
 
 RUN /root/smoketest/static-test-runner
