@@ -22,7 +22,6 @@ export LIBRARY_PATH=$(LIBGIT2_LIB_PATH)
 export PKG_CONFIG_PATH=$(LIBGIT2_LIB_PATH)/pkgconfig
 export CGO_LDFLAGS=$(shell PKG_CONFIG_PATH=$(PKG_CONFIG_PATH) pkg-config --libs --static --cflags libgit2)
 export CGO_CFLAGS=-I$(LIBGIT2_PATH)/include
-export ALLOW_THREADLESS_LIBGIT2=true
 
 GO_STATIC_FLAGS=-tags 'netgo,osusergo,static_build'
 
