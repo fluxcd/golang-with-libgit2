@@ -1,7 +1,7 @@
 # This Dockerfile builds and packages libgit2 only (not linked with openssl and libssh2)
 
 ARG BASE_VARIANT=alpine
-ARG GO_VERSION=1.18
+ARG GO_VERSION=1.19
 ARG XX_VERSION=1.1.2
 
 FROM --platform=$BUILDPLATFORM tonistiigi/xx:${XX_VERSION} AS xx

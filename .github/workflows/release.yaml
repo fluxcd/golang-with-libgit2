@@ -107,7 +107,7 @@ jobs:
           fetch-depth: 0
       - uses: actions/setup-go@v3
         with:
-          go-version: 1.18.x
+          go-version: 1.19.x
       - name: Setup Cosign
         uses: sigstore/cosign-installer@main
       - name: Setup Syft
