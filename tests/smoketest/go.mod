@@ -1,6 +1,6 @@
 module github.com/fluxcd/golang-with-libgit2/tests/sample
 
-go 1.18
+go 1.19
 
 // A temporary fork of git2go was created to enable use
 // of libgit2 without thread support to fix:
