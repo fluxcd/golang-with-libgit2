@@ -18,9 +18,7 @@ import (
 	"hash"
 	"time"
 
-	// git2go must be aligned with libgit2 version:
-	// https://github.com/libgit2/git2go#which-go-version-to-use
-	git2go "github.com/libgit2/git2go/v33"
+	git2go "github.com/libgit2/git2go/v34"
 
 	"github.com/fluxcd/pkg/gittestserver"
 	"github.com/fluxcd/pkg/ssh"

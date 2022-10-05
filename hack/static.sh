@@ -2,7 +2,7 @@
 
 set -euxo pipefail
 
-LIBGIT2_URL="${LIBGIT2_URL:-https://github.com/libgit2/libgit2/archive/refs/tags/v1.3.2.tar.gz}"
+LIBGIT2_URL="${LIBGIT2_URL:-https://github.com/libgit2/libgit2/archive/refs/tags/v1.5.0.tar.gz}"
 
 TARGET_DIR="${TARGET_DIR:-/usr/local/$(xx-info triple)}"
 BUILD_ROOT_DIR="${BUILD_ROOT_DIR:-/build}"
@@ -55,11 +55,13 @@ function build_libgit2_only(){
     -DCMAKE_C_FLAGS=-fPIC \
     -DUSE_SSH:BOOL=OFF \
     -DHAVE_LIBSSH2_MEMORY_CREDENTIALS:BOOL=OFF \
-    -DDEPRECATE_HARD:BOOL=ON \
+    -DDEPRECATE_HARD:BOOL=OFF \
     -DUSE_BUNDLED_ZLIB:BOOL=ON \
     -DUSE_HTTPS:STRING:BOOL=OFF \
     -DREGEX_BACKEND:STRING=builtin \
     -DCMAKE_BUILD_TYPE="RelWithDebInfo" \
+    -DBUILD_TESTS:BOOL=OFF \
+    -DPYTHON_EXECUTABLE="/usr/bin/python3" \
     ..
 
     cmake --build . --target install
