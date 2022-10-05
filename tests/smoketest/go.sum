@@ -32,6 +32,8 @@ github.com/emirpasic/gods v1.12.0/go.mod h1:YfzfFFoVP/catgzJb4IKIqXjX78Ha8FMSDh3
 github.com/envoyproxy/go-control-plane v0.9.1-0.20191026205805-5f8ba28d4473/go.mod h1:YTl/9mNaCwkRvm6d1a2C3ymFceY/DCBVvsKhRF0iEA4=
 github.com/envoyproxy/protoc-gen-validate v0.1.0/go.mod h1:iSmxcyjqTsJpI2R4NaDN7+kN2VEUnK/pcBlmesArF7c=
 github.com/evanphx/json-patch v4.12.0+incompatible/go.mod h1:50XU6AFN0ol/bzJsmQLiYLvXMP4fmwYFNcr97nuDLSk=
+github.com/fluxcd/git2go/v34 v34.0.0 h1:08PEpdbsLO4sUTvFKuxmt6xBowaqObro9veChBWFwa8=
+github.com/fluxcd/git2go/v34 v34.0.0/go.mod h1:blVco2jDAw6YTXkErMMqzHLcAjKkwF0aWIRHBqiJkZ0=
 github.com/fluxcd/pkg/gittestserver v0.5.2 h1:Tt2g1C2b3DB4OM7ZX9hsj6scPdpnkl0xjH85ZkNvIzA=
 github.com/fluxcd/pkg/gittestserver v0.5.2/go.mod h1:QNv2arrHGReWIev8rp3Stg1JMq+xqT/lomSFZ2KfMBI=
 github.com/fluxcd/pkg/ssh v0.3.2 h1:HZlDF6Qu4yplsU4Tisv6hxsRIbIOwwr7rKus8/Q/Dn0=
@@ -148,8 +150,6 @@ github.com/onsi/gomega v0.0.0-20170829124025-dcabb60a477c/go.mod h1:C1qb7wdrVGGV
 github.com/onsi/gomega v1.7.1/go.mod h1:XdKZgCCFLUoM/7CFJVPcG8C1xQ1AJ0vpAezJrB7JYyY=
 github.com/onsi/gomega v1.10.1/go.mod h1:iN09h71vgCQne3DLsj+A5owkum+a2tYe+TOCB1ybHNo=
 github.com/onsi/gomega v1.19.0 h1:4ieX6qQjPP/BfC3mpsAtIGGlxTWPeA3Inl/7DtXw1tw=
-github.com/pjbgf/git2go/v33 v33.0.9-nothread-check h1:gSK7FaLECIM3VSuBOAsVZQtWd+51iTB5lv9RyxhOYMk=
-github.com/pjbgf/git2go/v33 v33.0.9-nothread-check/go.mod h1:KdpqkU+6+++4oHna/MIOgx4GCQ92IPCdpVRMRI80J+4=
 github.com/pkg/errors v0.8.1/go.mod h1:bwawxfHBFNV+L2hUp1rHADufV3IMtnDRdf1r5NINEl0=
 github.com/pkg/errors v0.9.1 h1:FEBLx1zS214owpjy7qsBeixbURkuhQAwrK5UwLGTwt4=
 github.com/pkg/errors v0.9.1/go.mod h1:bwawxfHBFNV+L2hUp1rHADufV3IMtnDRdf1r5NINEl0=

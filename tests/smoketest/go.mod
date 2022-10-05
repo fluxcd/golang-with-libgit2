@@ -2,21 +2,13 @@ module github.com/fluxcd/golang-with-libgit2/tests/sample
 
 go 1.19
 
-// A temporary fork of git2go was created to enable use
-// of libgit2 without thread support to fix:
-// fluxcd/image-automation-controller/#339.
-//
-// This can be removed once libgit2/git2go#918 is merged.
-//
-// The fork automatically releases new patches based on upstream:
-// https://github.com/pjbgf/git2go/commit/d72e39cdc20f7fe014ba73072b01ba7b569e9253
-replace github.com/libgit2/git2go/v33 => github.com/pjbgf/git2go/v33 v33.0.9-nothread-check
+replace github.com/libgit2/git2go/v34 => github.com/fluxcd/git2go/v34 v34.0.0
 
 require (
 	github.com/fluxcd/pkg/gittestserver v0.5.2
 	github.com/fluxcd/pkg/ssh v0.3.2
 	github.com/fluxcd/source-controller v0.24.4
-	github.com/libgit2/git2go/v33 v33.0.9
+	github.com/libgit2/git2go/v34 v34.0.0
 	golang.org/x/crypto v0.0.0-20220427172511-eb4f295cb31f
 )
 

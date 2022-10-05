@@ -15,6 +15,7 @@ RUN apk add --no-cache \
         linux-headers \
         perl \
         cmake \
+        python3-dev \
         pkgconfig \
         gcc \
         musl-dev \
